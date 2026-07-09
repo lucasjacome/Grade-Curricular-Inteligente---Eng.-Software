@@ -1,0 +1,1501 @@
+{
+  "fonte" : "SGA PUC Minas - pgAln_PmTurmas.html",
+  "semestre" : "2026/2",
+  "disciplinas" : [ {
+    "nome" : "COMPUTABILIDADE",
+    "turmas" : [ {
+      "codigo" : "7622.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "DESENVOLVIMENTO DE INTERFACES WEB",
+    "turmas" : [ {
+      "codigo" : "7624.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7624.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "FILOSOFIA: LÓGICA E PENSAMENTO CRÍTICO",
+    "turmas" : [ {
+      "codigo" : "7491.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEX",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "FUNDAMENTOS DE ENGENHARIA DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "7630.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "INTRODUÇÃO À ALGORITMOS",
+    "turmas" : [ {
+      "codigo" : "7621.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7621.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      }, {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "INTRODUÇÃO À COMPUTAÇÃO",
+    "turmas" : [ {
+      "codigo" : "7632.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "TRABALHO INTERDISCIPLINAR: DESENVOLVIMENTO DE APLICAÇÕES WEB",
+    "turmas" : [ {
+      "codigo" : "7641.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "7641.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "EMPREENDEDORISMO E INOVAÇÃO",
+    "turmas" : [ {
+      "codigo" : "4621.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "INTELIGÊNCIA ARTIFICIAL",
+    "turmas" : [ {
+      "codigo" : "1111.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "ARTIFICIAL INTELLIGENCE FOR WORK",
+    "turmas" : [ {
+      "codigo" : "9251.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "13:30",
+        "fim" : "15:00"
+      } ]
+    } ]
+  }, {
+    "nome" : "BRAZILIAN ART AND MUSIC",
+    "turmas" : [ {
+      "codigo" : "9253.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "10:40",
+        "fim" : "12:10"
+      } ]
+    } ]
+  }, {
+    "nome" : "INTERNATIONAL CAREERS",
+    "turmas" : [ {
+      "codigo" : "9254.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "10:40",
+        "fim" : "12:10"
+      } ]
+    } ]
+  }, {
+    "nome" : "SUSTAINABLE DEVELOPMENT",
+    "turmas" : [ {
+      "codigo" : "9262.1.00",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "ARQUITETURA DE COMPUTADORES",
+    "turmas" : [ {
+      "codigo" : "7513.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "CÁLCULO I",
+    "turmas" : [ {
+      "codigo" : "7545.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "SEX",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "DESENVOLVIMENTO E INTEGRAÇÃO DE APLICAÇÕES WEB",
+    "turmas" : [ {
+      "codigo" : "7555.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7555.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "INTERAÇÃO HUMANO-COMPUTADOR",
+    "turmas" : [ {
+      "codigo" : "7527.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "INTRODUÇÃO À PESQUISA EM INFORMÁTICA",
+    "turmas" : [ {
+      "codigo" : "7576.1.00",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "METODOLOGIAS DE EXTENSÃO UNIVERSITÁRIA",
+    "turmas" : [ {
+      "codigo" : "7581.1.00",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PROGRAMAÇÃO MODULAR",
+    "turmas" : [ {
+      "codigo" : "7562.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7562.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TRABALHO INTERDISCIPLINAR: DESENVOLVIMENTO CENTRADO NO USUÁRIO",
+    "turmas" : [ {
+      "codigo" : "7600.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "7600.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "7600.1.03",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "ALGORITMOS E ESTRUTURAS DE DADOS II",
+    "turmas" : [ {
+      "codigo" : "5534.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "5534.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      }, {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "CULTURA RELIGIOSA: FENÔMENO RELIGIOSO",
+    "turmas" : [ {
+      "codigo" : "8968.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEX",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "ENGENHARIA DE REQUISITOS DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "8979.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "INTRODUÇÃO À PESQUISA EM INFORMÁTICA",
+    "turmas" : [ {
+      "codigo" : "8971.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "SISTEMAS OPERACIONAIS",
+    "turmas" : [ {
+      "codigo" : "8978.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TRABALHO INTERDISCIPLINAR: APLICAÇÕES PARA CENÁRIOS REAIS",
+    "turmas" : [ {
+      "codigo" : "5533.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "5533.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "ECONOMIA FINANCEIRA: OPERAÇÕES E ESTRUTURA",
+    "turmas" : [ {
+      "codigo" : "2108.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "FUNDAMENTOS DE EXTENSÃO UNIVERSITÁRIA",
+    "turmas" : [ {
+      "codigo" : "1348.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO CONTÁBIL CONTEMPORÂNEA APLICADA",
+    "turmas" : [ {
+      "codigo" : "6827.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DE REDES E MÍDIAS SOCIAIS",
+    "turmas" : [ {
+      "codigo" : "6716.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "IMPACTOS AMBIENTAIS E ALTERAÇÕES CLIMÁTICAS GLOBAIS",
+    "turmas" : [ {
+      "codigo" : "1592.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "MATEMÁTICA FINANCEIRA",
+    "turmas" : [ {
+      "codigo" : "5834.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PSICOLOGIA DO DESENVOLVIMENTO E DA APRENDIZAGEM",
+    "turmas" : [ {
+      "codigo" : "2327.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "SISTEMAS DE TECNOLOGIA CONTÁBIL",
+    "turmas" : [ {
+      "codigo" : "4483.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "INTERAÇÃO HUMANO-COMPUTADOR",
+    "turmas" : [ {
+      "codigo" : "1255.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "LABORATÓRIO DE DESENVOLVIMENTO DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "1252.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    }, {
+      "codigo" : "1252.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEX",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "PROJETO DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "1251.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "SEX",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "REDES DE COMPUTADORES",
+    "turmas" : [ {
+      "codigo" : "1253.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "TEORIA DOS GRAFOS E COMPUTABILIDADE",
+    "turmas" : [ {
+      "codigo" : "1250.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TRABALHO INTERDISCIPLINAR: APLICAÇÕES PARA SUSTENTABILIDADE",
+    "turmas" : [ {
+      "codigo" : "1254.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "1254.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "CONTABILIDADE DE INSTITUIÇÕES FINANCEIRAS E MERCADOS DE CAPITAIS",
+    "turmas" : [ {
+      "codigo" : "4417.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "ECONOMIA FINANCEIRA: OPERAÇÕES E ESTRUTURA",
+    "turmas" : [ {
+      "codigo" : "2108.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "EMPREENDEDORISMO E INOVAÇÃO",
+    "turmas" : [ {
+      "codigo" : "4621.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "FUNDAMENTOS DE GEOPROCESSAMENTO",
+    "turmas" : [ {
+      "codigo" : "7540.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO CONTÁBIL CONTEMPORÂNEA APLICADA",
+    "turmas" : [ {
+      "codigo" : "6827.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DA COMUNICAÇÃO E MARKETING DIGITAL",
+    "turmas" : [ {
+      "codigo" : "4517.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DE REDES E MÍDIAS SOCIAIS",
+    "turmas" : [ {
+      "codigo" : "6716.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "HISTÓRIA DA ARQUITETURA, DA ARTE E CIDADE NO BRASIL",
+    "turmas" : [ {
+      "codigo" : "4560.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "IMPACTOS AMBIENTAIS E ALTERAÇÕES CLIMÁTICAS GLOBAIS",
+    "turmas" : [ {
+      "codigo" : "1592.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "LIDERANÇA E GESTÃO DE CARREIRAS",
+    "turmas" : [ {
+      "codigo" : "2585.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "MATEMÁTICA FINANCEIRA",
+    "turmas" : [ {
+      "codigo" : "5834.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "MERCADO FINANCEIRO E DE CAPITAIS",
+    "turmas" : [ {
+      "codigo" : "4717.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PSICOLOGIA DO CONSUMO",
+    "turmas" : [ {
+      "codigo" : "4491.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PSICOLOGIA DO DESENVOLVIMENTO E DA APRENDIZAGEM",
+    "turmas" : [ {
+      "codigo" : "2327.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "SISTEMAS DE TECNOLOGIA CONTÁBIL",
+    "turmas" : [ {
+      "codigo" : "4483.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "TECNOLOGIAS PARA ANÁLISE E DESENVOLVIMENTO DE SISTEMAS",
+    "turmas" : [ {
+      "codigo" : "6136.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "ARQUITETURA DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "0444.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "0444.2.00",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "CULTURA RELIGIOSA: PESSOA E SOCIEDADE",
+    "turmas" : [ {
+      "codigo" : "0440.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "DESENVOLVIMENTO DE APLICAÇÕES MÓVEIS E DISTRIBUÍDAS",
+    "turmas" : [ {
+      "codigo" : "0490.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "ESTATÍSTICA E PROBABILIDADE",
+    "turmas" : [ {
+      "codigo" : "0443.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEX",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "0443.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEX",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "FUNDAMENTOS DE PROJETO E ANÁLISE DE ALGORITMOS",
+    "turmas" : [ {
+      "codigo" : "0442.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "GERÊNCIA DE PROJETOS DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "0446.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "0446.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "LABORATÓRIO DE DESENVOLVIMENTO DE APLICAÇÕES MÓVEIS E DISTRIBUÍDAS",
+    "turmas" : [ {
+      "codigo" : "0491.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    }, {
+      "codigo" : "0491.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    }, {
+      "codigo" : "0491.1.03",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TRABALHO INTERDISCIPLINAR: APLICAÇÕES DISTRIBUÍDAS",
+    "turmas" : [ {
+      "codigo" : "0492.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "0492.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "0492.1.03",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    }, {
+      "codigo" : "0492.1.04",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "CIDADES INTELIGENTES",
+    "turmas" : [ {
+      "codigo" : "1924.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "CIÊNCIA DE DADOS",
+    "turmas" : [ {
+      "codigo" : "5566.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "CONTABILIDADE GERENCIAL",
+    "turmas" : [ {
+      "codigo" : "0017.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "NEGOCIAÇÃO E TOMADA DE DECISÃO",
+    "turmas" : [ {
+      "codigo" : "9812.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "ENGENHARIA ECONÔMICA PARA SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "8509.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "GERÊNCIA DE CONFIGURAÇÃO E EVOLUÇÃO DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "8507.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUI",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "LABORATÓRIO DE EXPERIMENTAÇÃO DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "8506.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEX",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    }, {
+      "codigo" : "8506.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEX",
+        "inicio" : "17:10",
+        "fim" : "18:40"
+      } ]
+    } ]
+  }, {
+    "nome" : "MEDIÇÃO E EXPERIMENTAÇÃO EM ENGENHARIA DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "8505.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "SEX",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "TESTE DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "8504.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TRABALHO INTERDISCIPLINAR: PESQUISA EM ENGENHARIA DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "8508.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "8508.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "8508.1.03",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "CONTABILIDADE DE INSTITUIÇÕES FINANCEIRAS E MERCADOS DE CAPITAIS",
+    "turmas" : [ {
+      "codigo" : "4417.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "ECONOMIA FINANCEIRA: OPERAÇÕES E ESTRUTURA",
+    "turmas" : [ {
+      "codigo" : "2108.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "EMPREENDEDORISMO E INOVAÇÃO",
+    "turmas" : [ {
+      "codigo" : "4621.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "FUNDAMENTOS DE GEOPROCESSAMENTO",
+    "turmas" : [ {
+      "codigo" : "7540.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO CONTÁBIL CONTEMPORÂNEA APLICADA",
+    "turmas" : [ {
+      "codigo" : "6827.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DA COMUNICAÇÃO E MARKETING DIGITAL",
+    "turmas" : [ {
+      "codigo" : "4517.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DE REDES E MÍDIAS SOCIAIS",
+    "turmas" : [ {
+      "codigo" : "6716.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "HISTÓRIA DA ARTE",
+    "turmas" : [ {
+      "codigo" : "9706.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "IMPACTOS AMBIENTAIS E ALTERAÇÕES CLIMÁTICAS GLOBAIS",
+    "turmas" : [ {
+      "codigo" : "1592.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "LIDERANÇA E GESTÃO DE CARREIRAS",
+    "turmas" : [ {
+      "codigo" : "2585.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "MATEMÁTICA FINANCEIRA",
+    "turmas" : [ {
+      "codigo" : "5834.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PSICOLOGIA DO CONSUMO",
+    "turmas" : [ {
+      "codigo" : "4491.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PSICOLOGIA DO DESENVOLVIMENTO E DA APRENDIZAGEM",
+    "turmas" : [ {
+      "codigo" : "2327.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "SISTEMAS DE TECNOLOGIA CONTÁBIL",
+    "turmas" : [ {
+      "codigo" : "4483.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "COMPUTADORES E SOCIEDADE",
+    "turmas" : [ {
+      "codigo" : "3581.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "ENGENHARIA DE PROCESSOS E QUALIDADE DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "3582.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "FILOSOFIA: ANTROPOLOGIA E ÉTICA",
+    "turmas" : [ {
+      "codigo" : "3580.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SEG",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DA PRODUÇÃO DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "3583.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TECNOLOGIAS DA INFORMAÇÃO E DO CONHECIMENTO",
+    "turmas" : [ {
+      "codigo" : "3584.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUI",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TÓPICOS EM COMPUTAÇÃO I",
+    "turmas" : [ {
+      "codigo" : "0890.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "TÓPICOS EM COMPUTAÇÃO II",
+    "turmas" : [ {
+      "codigo" : "6855.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "TRABALHO DE CONCLUSÃO DE CURSO I",
+    "turmas" : [ {
+      "codigo" : "3585.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "3585.1.02",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "3585.1.03",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "3585.1.04",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "QUA",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "CIÊNCIA DE DADOS",
+    "turmas" : [ {
+      "codigo" : "3018.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "INTELIGÊNCIA ARTIFICIAL",
+    "turmas" : [ {
+      "codigo" : "1111.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "TÓPICOS EM COMPUTAÇÃO I",
+    "turmas" : [ {
+      "codigo" : "0890.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "MODELAGEM E AVALIAÇÃO DE DESEMPENHO",
+    "turmas" : [ {
+      "codigo" : "7602.1.00",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      }, {
+        "dia" : "QUA",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    }, {
+      "codigo" : "7602.2.00",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "SEGURANÇA E AUDITORIA DE SISTEMAS",
+    "turmas" : [ {
+      "codigo" : "4784.1.01",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "TER",
+        "inicio" : "20:50",
+        "fim" : "22:20"
+      } ]
+    } ]
+  }, {
+    "nome" : "TÓPICOS EM ENGENHARIA DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "0964.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "TÓPICOS EM SISTEMAS DE SOFTWARE",
+    "turmas" : [ {
+      "codigo" : "5699.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "TRABALHO DE CONCLUSÃO DE CURSO II",
+    "turmas" : [ {
+      "codigo" : "7607.1.01",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.02",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.03",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.04",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.05",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.06",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.07",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.08",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.09",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.10",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.11",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.12",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.13",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.14",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.15",
+      "sincrona" : true,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.16",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    }, {
+      "codigo" : "7607.1.17",
+      "sincrona" : false,
+      "horarios" : [ {
+        "dia" : "SAB",
+        "inicio" : "19:00",
+        "fim" : "20:30"
+      } ]
+    } ]
+  }, {
+    "nome" : "CONTABILIDADE DE INSTITUIÇÕES FINANCEIRAS E MERCADOS DE CAPITAIS",
+    "turmas" : [ {
+      "codigo" : "4417.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "ECONOMIA FINANCEIRA: OPERAÇÕES E ESTRUTURA",
+    "turmas" : [ {
+      "codigo" : "2108.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "EMPREENDEDORISMO E INOVAÇÃO",
+    "turmas" : [ {
+      "codigo" : "4621.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "FUNDAMENTOS DE GEOPROCESSAMENTO",
+    "turmas" : [ {
+      "codigo" : "7540.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO CONTÁBIL CONTEMPORÂNEA APLICADA",
+    "turmas" : [ {
+      "codigo" : "6827.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DA COMUNICAÇÃO E MARKETING DIGITAL",
+    "turmas" : [ {
+      "codigo" : "4517.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "GESTÃO DE REDES E MÍDIAS SOCIAIS",
+    "turmas" : [ {
+      "codigo" : "6716.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "IMPACTOS AMBIENTAIS E ALTERAÇÕES CLIMÁTICAS GLOBAIS",
+    "turmas" : [ {
+      "codigo" : "1592.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "LIDERANÇA E GESTÃO DE CARREIRAS",
+    "turmas" : [ {
+      "codigo" : "2585.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "MATEMÁTICA FINANCEIRA",
+    "turmas" : [ {
+      "codigo" : "5834.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PSICOLOGIA DO CONSUMO",
+    "turmas" : [ {
+      "codigo" : "4491.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "PSICOLOGIA DO DESENVOLVIMENTO E DA APRENDIZAGEM",
+    "turmas" : [ {
+      "codigo" : "2327.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "SISTEMAS DE TECNOLOGIA CONTÁBIL",
+    "turmas" : [ {
+      "codigo" : "4483.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "LIDERANÇA E GESTÃO DE CARREIRAS",
+    "turmas" : [ {
+      "codigo" : "2585.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  }, {
+    "nome" : "DIREITO CIBERNÉTICO",
+    "turmas" : [ {
+      "codigo" : "8134.1.01",
+      "sincrona" : false,
+      "horarios" : [ ]
+    } ]
+  } ]
+}

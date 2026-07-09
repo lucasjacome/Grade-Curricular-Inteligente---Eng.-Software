@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: grade-inteligente
+
+grade:
+  curriculo-path: classpath:curriculum.json
+
+logging:
+  level:
+    com.pucminas.gradeinteligente: INFO
