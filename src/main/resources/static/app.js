@@ -36,6 +36,7 @@ async function init() {
 
     renderChecklist();
     renderGrafo();
+    renderConsulta();
     ligarEventos();
     atualizarProgresso();
 }
@@ -44,8 +45,13 @@ function ligarEventos() {
     document.getElementById("btnCalcular").addEventListener("click", calcular);
     document.getElementById("btnLimpar").addEventListener("click", limpar);
     document.getElementById("busca").addEventListener("input", filtrarBusca);
+    document.getElementById("buscaConsulta").addEventListener("input", filtrarConsulta);
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => trocarTab(btn.dataset.tab));
+    });
+    document.getElementById("modalBackdrop").addEventListener("click", fecharModal);
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") fecharModal();
     });
 }
 
@@ -54,8 +60,12 @@ function ligarEventos() {
 function carregarConcluidas() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) estado.concluidas = new Set(JSON.parse(raw));
+        if (raw) estado.concluidas = new Set(JSON.parse(raw).map(String));
     } catch { /* ignore */ }
+}
+
+function estaConcluida(codigo) {
+    return estado.concluidas.has(String(codigo));
 }
 
 function salvarConcluidas() {
@@ -65,8 +75,10 @@ function salvarConcluidas() {
 /* ---------- Abas ---------- */
 
 function trocarTab(tab) {
-    document.getElementById("tab-mapa").classList.toggle("hidden", tab !== "mapa");
-    document.getElementById("tab-plano").classList.toggle("hidden", tab !== "plano");
+    ["mapa", "plano", "consulta"].forEach(t => {
+        const el = document.getElementById("tab-" + t);
+        if (el) el.classList.toggle("hidden", t !== tab);
+    });
     document.querySelectorAll(".tab-btn").forEach(b => {
         const ativo = b.dataset.tab === tab;
         b.classList.toggle("border-indigo-500", ativo);
@@ -75,6 +87,7 @@ function trocarTab(tab) {
         b.classList.toggle("text-slate-400", !ativo);
     });
     if (tab === "mapa" && estado.cy) estado.cy.resize();
+    if (tab === "consulta") atualizarConsulta();
 }
 
 /* ---------- Sidebar ---------- */
@@ -99,7 +112,7 @@ function renderChecklist() {
             const card = document.createElement("button");
             card.type = "button";
             card.className = "disc-card";
-            if (estado.concluidas.has(d.codigo)) card.classList.add("concluida");
+            if (estaConcluida(d.codigo)) card.classList.add("concluida");
             card.dataset.cod = d.codigo;
             card.dataset.busca = (d.nome + " " + d.codigo).toLowerCase();
             card.innerHTML = `
@@ -128,15 +141,17 @@ function filtrarBusca(e) {
 /* ---------- Seleção sincronizada ---------- */
 
 function toggleConcluida(codigo) {
-    if (estado.concluidas.has(codigo)) estado.concluidas.delete(codigo);
+    codigo = String(codigo);
+    if (estaConcluida(codigo)) estado.concluidas.delete(codigo);
     else estado.concluidas.add(codigo);
 
     const card = estado.cardByCode[codigo];
-    if (card) card.classList.toggle("concluida", estado.concluidas.has(codigo));
+    if (card) card.classList.toggle("concluida", estaConcluida(codigo));
 
     salvarConcluidas();
     pintarGrafoBase();
     atualizarProgresso();
+    atualizarConsulta();
 }
 
 function atualizarProgresso() {
@@ -152,6 +167,7 @@ function limpar() {
     salvarConcluidas();
     pintarGrafoBase();
     atualizarProgresso();
+    atualizarConsulta();
 }
 
 /* ---------- Grafo ---------- */
@@ -271,7 +287,7 @@ function mostrarInfo(node) {
 }
 
 function categoria(n) {
-    if (estado.concluidas.has(n.id())) return "concluida";
+    if (estaConcluida(n.id())) return "concluida";
     if (n.data("optativa")) return "optativa";
     if (n.data("destrava") >= 3) return "gargalo";
     return "comum";
@@ -299,7 +315,7 @@ function pintarGrafoPorPlano(mapaPeriodoDoNo, totalPeriodos) {
     estado.cy.batch(() => {
         estado.cy.nodes().forEach(n => {
             const id = n.id();
-            if (estado.concluidas.has(id)) {
+            if (estaConcluida(id)) {
                 n.removeClass("apagado");
                 n.style({ "background-color": COR.concluida.bg, "border-color": COR.concluida.border });
             } else if (id in mapaPeriodoDoNo) {
@@ -476,4 +492,378 @@ function renderGrade(disciplinas) {
     });
     html += `</tbody></table></div>`;
     cont.innerHTML = html;
+}
+
+/* ---------- Consultar disciplina ---------- */
+
+function disciplinaDe(codigo) {
+    return estado.curriculo.disciplinas.find(x => x.codigo === codigo);
+}
+
+function nomeDe(codigo) {
+    return disciplinaDe(codigo)?.nome ?? codigo;
+}
+
+// Quantas disciplinas essa destrava (direta + indiretamente), vindo do grafo.
+function destravaDe(codigo) {
+    const n = (estado.grafo?.nos || []).find(x => x.codigo === codigo);
+    return n ? n.destrava : 0;
+}
+
+// Carga horária acumulada = soma da CH das disciplinas já concluídas.
+function chAcumulada() {
+    let total = 0;
+    for (const c of estado.concluidas) total += disciplinaDe(c)?.cargaHoraria ?? 0;
+    return total;
+}
+
+// Disciplinas que têm `codigo` como pré/co-requisito (o que ela destrava diretamente).
+function preRequisitoDe(codigo) {
+    return estado.curriculo.disciplinas.filter(d => d.preRequisitos.includes(codigo));
+}
+function coRequisitoDe(codigo) {
+    return estado.curriculo.disciplinas.filter(d => d.coRequisitos.includes(codigo));
+}
+
+function renderConsulta() {
+    atualizarConsulta();
+}
+
+// Monta a lista apenas com disciplinas ainda não cursadas.
+function atualizarConsulta() {
+    const cont = document.getElementById("listaConsulta");
+    const vazio = document.getElementById("consultaVazio");
+    const termo = (document.getElementById("buscaConsulta")?.value || "").trim().toLowerCase();
+
+    const restantes = estado.curriculo.disciplinas
+        .filter(d => !estaConcluida(d.codigo))
+        .sort((a, b) => (a.periodoSugerido - b.periodoSugerido) || a.nome.localeCompare(b.nome));
+
+    const filtradas = termo
+        ? restantes.filter(d => (d.nome + " " + d.codigo).toLowerCase().includes(termo))
+        : restantes;
+
+    document.getElementById("contadorRestantes").textContent = `${restantes.length} restantes`;
+    vazio.classList.toggle("hidden", restantes.length > 0);
+    cont.classList.toggle("hidden", filtradas.length === 0 && restantes.length > 0);
+
+    cont.innerHTML = filtradas.map(d => {
+        const st = situacao(d);
+        return `<button type="button" data-cod="${d.codigo}"
+            class="consulta-card w-full text-left rounded-xl border border-slate-700 bg-slate-800/50 hover:border-indigo-500 hover:bg-slate-800 transition px-3.5 py-2.5 flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${st.cor}" title="${st.rotulo}"></span>
+            <span class="flex-1 min-w-0">
+                <span class="block text-[13px] font-semibold text-slate-100 leading-tight truncate">${d.nome}</span>
+                <span class="block text-[10px] text-slate-500 tabular-nums mt-0.5">${d.codigo} · ${d.cargaHoraria}h · ${d.periodoSugerido}º período</span>
+            </span>
+            ${d.optativa ? '<span class="text-[9px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded-full shrink-0">opt</span>' : ""}
+            <span class="text-slate-600 shrink-0">›</span>
+        </button>`;
+    }).join("");
+
+    cont.querySelectorAll(".consulta-card").forEach(btn => {
+        btn.addEventListener("click", () => abrirModalDisciplina(btn.dataset.cod));
+    });
+
+    if (estado.modalCodigo) {
+        if (estaConcluida(estado.modalCodigo)) fecharModal();
+        else document.getElementById("modalConteudo").innerHTML = montarConteudoModal(estado.modalCodigo);
+    }
+}
+
+function filtrarConsulta() {
+    atualizarConsulta();
+}
+
+// Calcula a situação da disciplina em relação às concluídas.
+function situacao(d) {
+    if (estaConcluida(d.codigo)) {
+        return { estado: "concluida", cor: "#10b981", rotulo: "Já concluída" };
+    }
+    const preFaltando = d.preRequisitos.filter(c => disciplinaDe(c) && !estaConcluida(c));
+    const chOk = chAcumulada() >= (d.cargaHorariaMinima || 0);
+    if (preFaltando.length === 0 && chOk) {
+        return { estado: "disponivel", cor: "#6366f1", rotulo: "Disponível para cursar" };
+    }
+    return { estado: "bloqueada", cor: "#f59e0b", rotulo: "Bloqueada", preFaltando, chOk };
+}
+
+/* ---------- Modal de detalhes ---------- */
+
+function abrirModalDisciplina(codigo) {
+    codigo = String(codigo);
+    const modal = document.getElementById("modalDisciplina");
+    const panel = document.getElementById("modalPanel");
+    const backdrop = document.getElementById("modalBackdrop");
+    const conteudo = document.getElementById("modalConteudo");
+
+    const jaAberto = modal.classList.contains("is-active");
+
+    // Navegação interna: troca só o conteúdo, sem reanimar painel/backdrop.
+    if (jaAberto && estado.modalCodigo && codigo !== estado.modalCodigo) {
+        trocarDisciplinaNoModal(codigo);
+        return;
+    }
+    if (jaAberto && codigo === estado.modalCodigo) return;
+
+    if (estado.animPanel) estado.animPanel.cancel();
+    if (estado.animBackdrop) estado.animBackdrop.cancel();
+    if (estado.animConteudo) estado.animConteudo.cancel();
+
+    estado.modalCodigo = codigo;
+    conteudo.innerHTML = montarConteudoModal(codigo);
+    limparEstilosAnimacao(conteudo);
+    limparEstilosAnimacao(panel);
+
+    modal.classList.add("is-active", "is-open");
+    modal.setAttribute("aria-hidden", "false");
+    panel.scrollTop = 0;
+
+    if (typeof panel.animate !== "function") return;
+
+    estado.animBackdrop = backdrop.animate(
+        [{ opacity: 0 }, { opacity: 1 }],
+        { duration: 260, easing: "ease", fill: "both" }
+    );
+    estado.animPanel = panel.animate(
+        [
+            { opacity: 0, transform: "scale(0.9) translateY(28px)" },
+            { opacity: 1, transform: "scale(1) translateY(0)" },
+        ],
+        { duration: 360, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "both" }
+    );
+    estado.animPanel.onfinish = () => limparEstilosAnimacao(panel);
+}
+
+// Transição fluida ao clicar em pré/co-requisito dentro do pop-up.
+function trocarDisciplinaNoModal(codigo) {
+    const conteudo = document.getElementById("modalConteudo");
+    const panel = document.getElementById("modalPanel");
+
+    if (estado.animConteudo) {
+        estado.animConteudo.cancel();
+        limparEstilosAnimacao(conteudo);
+    }
+
+    estado.modalCodigo = codigo;
+
+    if (typeof conteudo.animate !== "function") {
+        conteudo.innerHTML = montarConteudoModal(codigo);
+        panel.scrollTop = 0;
+        return;
+    }
+
+    const saida = conteudo.animate(
+        [
+            { opacity: 1, transform: "translateX(0)" },
+            { opacity: 0, transform: "translateX(-10px)" },
+        ],
+        { duration: 100, easing: "ease-in", fill: "forwards" }
+    );
+
+    saida.onfinish = () => {
+        limparEstilosAnimacao(conteudo);
+        conteudo.innerHTML = montarConteudoModal(codigo);
+        panel.scrollTop = 0;
+        estado.animConteudo = conteudo.animate(
+            [
+                { opacity: 0, transform: "translateX(12px)" },
+                { opacity: 1, transform: "translateX(0)" },
+            ],
+            { duration: 160, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" }
+        );
+        estado.animConteudo.onfinish = () => limparEstilosAnimacao(conteudo);
+        estado.animConteudo.oncancel = () => limparEstilosAnimacao(conteudo);
+    };
+    saida.oncancel = () => limparEstilosAnimacao(conteudo);
+}
+
+function limparEstilosAnimacao(el) {
+    if (!el) return;
+    el.style.removeProperty("opacity");
+    el.style.removeProperty("transform");
+    el.style.removeProperty("filter");
+}
+
+function fecharModal() {
+    const modal = document.getElementById("modalDisciplina");
+    const panel = document.getElementById("modalPanel");
+    const backdrop = document.getElementById("modalBackdrop");
+    if (!modal.classList.contains("is-active")) return;
+
+    modal.setAttribute("aria-hidden", "true");
+
+    const finalizar = () => {
+        modal.classList.remove("is-active", "is-open");
+        estado.modalCodigo = null;
+        estado.animPanel = null;
+        estado.animBackdrop = null;
+        estado.animConteudo = null;
+        limparEstilosAnimacao(panel);
+        limparEstilosAnimacao(document.getElementById("modalConteudo"));
+    };
+
+    if (typeof panel.animate !== "function") {
+        finalizar();
+        return;
+    }
+
+    if (estado.animPanel) estado.animPanel.cancel();
+    if (estado.animBackdrop) estado.animBackdrop.cancel();
+    if (estado.animConteudo) estado.animConteudo.cancel();
+
+    backdrop.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease", fill: "both" });
+    const saida = panel.animate(
+        [
+            { opacity: 1, transform: "scale(1) translateY(0)" },
+            { opacity: 0, transform: "scale(0.95) translateY(12px)" },
+        ],
+        { duration: 220, easing: "ease", fill: "both" }
+    );
+    estado.animPanel = saida;
+    saida.onfinish = finalizar;
+    saida.oncancel = () => { /* substituída por nova abertura */ };
+}
+
+// Linha clicável para um requisito (pré ou co), mostrando se já foi concluído.
+function linhaRequisito(codigo) {
+    const existe = disciplinaDe(codigo);
+    const feito = estaConcluida(codigo);
+    const clique = existe ? `onclick="abrirModalDisciplina('${codigo}')"` : "";
+    const cls = existe ? "hover:border-indigo-500 cursor-pointer" : "opacity-70 cursor-default";
+    const marca = feito
+        ? '<span class="w-4 h-4 rounded-full grid place-items-center text-[10px] bg-emerald-500 text-white shrink-0">✓</span>'
+        : '<span class="w-4 h-4 rounded-full grid place-items-center text-[10px] bg-slate-700 text-slate-400 shrink-0">•</span>';
+    return `<button type="button" ${clique}
+        class="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 border transition ${feito ? 'border-emerald-600/40 bg-emerald-500/10' : 'border-slate-700 bg-slate-800/40'} ${cls}">
+        ${marca}
+        <span class="flex-1 text-[13px] ${feito ? 'text-emerald-200' : 'text-slate-200'}">${nomeDe(codigo)}</span>
+        <span class="text-[10px] text-slate-500 tabular-nums">${codigo}</span>
+    </button>`;
+}
+
+function montarConteudoModal(codigo) {
+    const d = disciplinaDe(codigo);
+    if (!d) return "";
+
+    const st = situacao(d);
+    const preReais = d.preRequisitos.filter(c => disciplinaDe(c));
+    const coReais = d.coRequisitos.filter(c => disciplinaDe(c));
+    const destravaDireto = preRequisitoDe(codigo);
+    const coDe = coRequisitoDe(codigo);
+    const destravaTotal = destravaDe(codigo);
+    const chMin = d.cargaHorariaMinima || 0;
+    const chAcum = chAcumulada();
+
+    const badge = (txt, cor) =>
+        `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-${cor}-500/20 text-${cor}-300">${txt}</span>`;
+
+    const badges = [
+        d.optativa ? badge("optativa", "violet") : "",
+        d.semipresencial ? badge("semipresencial", "sky") : "",
+        destravaTotal >= 3 ? badge("gargalo", "amber") : "",
+    ].join(" ");
+
+    // Banner de situação
+    let banner;
+    if (st.estado === "concluida") {
+        banner = `<div class="rounded-xl border border-emerald-600/40 bg-emerald-500/10 px-4 py-3 text-emerald-200 text-sm font-semibold flex items-center gap-2">
+            ✓ Você já concluiu esta disciplina.
+        </div>`;
+    } else if (st.estado === "disponivel") {
+        banner = `<div class="rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-indigo-200 text-sm font-semibold flex items-center gap-2">
+            ▶ Disponível para cursar agora — você cumpre todos os requisitos.
+        </div>`;
+    } else {
+        const motivos = [];
+        if (st.preFaltando.length) {
+            motivos.push(`Faltam ${st.preFaltando.length} pré-requisito(s): ${st.preFaltando.map(nomeDe).join(", ")}.`);
+        }
+        if (!st.chOk) {
+            motivos.push(`Falta carga horária: você tem ${chAcum}h de ${chMin}h exigidas (faltam ${chMin - chAcum}h).`);
+        }
+        banner = `<div class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-amber-200 text-sm">
+            <div class="font-semibold mb-1">⚠ Ainda bloqueada</div>
+            <ul class="list-disc list-inside space-y-0.5 text-[13px] text-amber-100/90">
+                ${motivos.map(m => `<li>${m}</li>`).join("")}
+            </ul>
+        </div>`;
+    }
+
+    // Bloco CH mínima
+    const pctCh = chMin > 0 ? Math.min(100, Math.round((chAcum / chMin) * 100)) : 100;
+    const chBloco = chMin > 0 ? `
+        <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+                <span class="text-slate-400 font-medium">Carga horária mínima exigida</span>
+                <span class="tabular-nums ${chAcum >= chMin ? 'text-emerald-400' : 'text-amber-400'} font-semibold">${chAcum}h / ${chMin}h</span>
+            </div>
+            <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div class="h-full ${chAcum >= chMin ? 'bg-emerald-500' : 'bg-amber-500'}" style="width:${pctCh}%"></div>
+            </div>
+        </div>` : `<p class="text-[12px] text-slate-500">Sem exigência de carga horária mínima acumulada.</p>`;
+
+    const secaoLista = (titulo, subtitulo, itens, vazio) => `
+        <div>
+            <h4 class="text-[13px] font-bold text-white">${titulo}</h4>
+            <p class="text-[11px] text-slate-500 mb-2">${subtitulo}</p>
+            ${itens.length ? `<div class="space-y-1.5">${itens}</div>`
+                            : `<p class="text-[12px] text-slate-500 italic">${vazio}</p>`}
+        </div>`;
+
+    return `
+        <div class="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-5 py-4 flex items-start gap-3">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="text-lg font-bold text-white leading-tight">${d.nome}</h3>
+                    ${badges}
+                </div>
+                <p class="text-xs text-slate-400 mt-1 tabular-nums">
+                    ${d.codigo} · ${d.cargaHoraria}h · ${d.periodoSugerido}º período sugerido
+                </p>
+            </div>
+            <button type="button" onclick="fecharModal()"
+                    class="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition text-lg">✕</button>
+        </div>
+
+        <div class="p-5 space-y-5">
+            ${banner}
+
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-center">
+                    <div class="text-xl font-extrabold text-indigo-400 tabular-nums">${destravaTotal}</div>
+                    <div class="text-[10px] uppercase tracking-wide text-slate-500 mt-0.5">Disciplinas que destrava</div>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-center">
+                    <div class="text-xl font-extrabold text-indigo-400 tabular-nums">${preReais.length}</div>
+                    <div class="text-[10px] uppercase tracking-wide text-slate-500 mt-0.5">Pré-requisitos</div>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-center">
+                    <div class="text-xl font-extrabold text-indigo-400 tabular-nums">${coReais.length}</div>
+                    <div class="text-[10px] uppercase tracking-wide text-slate-500 mt-0.5">Co-requisitos</div>
+                </div>
+            </div>
+
+            ${chBloco}
+
+            <div class="border-t border-slate-800 pt-4">
+                <h3 class="text-sm font-bold text-white mb-3">O que você precisa para cursá-la</h3>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    ${secaoLista("Pré-requisitos", "Precisam estar concluídos antes.",
+                        preReais.map(linhaRequisito).join(""), "Nenhum pré-requisito.")}
+                    ${secaoLista("Co-requisitos", "Podem ser cursados no mesmo período ou antes.",
+                        coReais.map(linhaRequisito).join(""), "Nenhum co-requisito.")}
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800 pt-4">
+                <h3 class="text-sm font-bold text-white mb-3">O que ela destrava</h3>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    ${secaoLista("É pré-requisito de", "Disciplinas que só liberam depois desta.",
+                        destravaDireto.map(x => linhaRequisito(x.codigo)).join(""), "Não é pré-requisito de nenhuma disciplina.")}
+                    ${secaoLista("É co-requisito de", "Disciplinas que a exigem como co-requisito.",
+                        coDe.map(x => linhaRequisito(x.codigo)).join(""), "Não é co-requisito de nenhuma disciplina.")}
+                </div>
+            </div>
+        </div>`;
 }
