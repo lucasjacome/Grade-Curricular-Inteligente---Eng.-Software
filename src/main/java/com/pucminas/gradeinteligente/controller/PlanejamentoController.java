@@ -25,4 +25,9 @@ public class PlanejamentoController {
     public PlanoResponse planejar(@Valid @RequestBody PlanoRequest request) {
         return planejadorService.planejar(request);
     }
+
+    @PostMapping("/plano/proximo-semestre")
+    public PlanoResponse planejarProximoSemestre(@Valid @RequestBody PlanoRequest request) {
+        return planejadorService.planejarProximoSemestre(request);
+    }
 }

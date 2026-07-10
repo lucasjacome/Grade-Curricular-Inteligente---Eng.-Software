@@ -10,6 +10,7 @@ import com.google.ortools.sat.Literal;
 import com.pucminas.gradeinteligente.domain.Curriculo;
 import com.pucminas.gradeinteligente.domain.Disciplina;
 import com.pucminas.gradeinteligente.domain.Turma;
+import com.pucminas.gradeinteligente.dto.AlternativaDTO;
 import com.pucminas.gradeinteligente.dto.DisciplinaPlanejadaDTO;
 import com.pucminas.gradeinteligente.dto.PeriodoDTO;
 import com.pucminas.gradeinteligente.dto.PlanoRequest;
@@ -197,6 +198,280 @@ public class PlanejadorService {
         return montarResposta(solver, termo, pendentes, chRestante, otimo, avisos, turmaEscolhida);
     }
 
+    /**
+     * Planeja <b>apenas o próximo semestre</b>: escolhe o maior conjunto possível de
+     * disciplinas que o aluno já pode cursar agora (todos os pré-requisitos concluídos e
+     * carga horária mínima cumprida), respeitando a capacidade máxima por período e evitando
+     * choque de horário entre as turmas da oferta atual. Entre os empates, prioriza os
+     * gargalos (disciplinas que destravam mais o currículo).
+     *
+     * <p>Faz sentido como um cálculo separado da rota completa porque os horários mudam a cada
+     * semestre — só temos como garantir a grade do próximo semestre.
+     */
+    public PlanoResponse planejarProximoSemestre(PlanoRequest request) {
+        Curriculo curriculo = repository.getCurriculo();
+        Map<String, Disciplina> porCodigo = curriculo.indexadoPorCodigo();
+
+        Set<String> concluidas = new HashSet<>(request.concluidas());
+        List<String> avisos = new ArrayList<>();
+        for (String c : concluidas) {
+            if (!porCodigo.containsKey(c)) {
+                avisos.add("Código concluído não reconhecido e ignorado: " + c);
+            }
+        }
+
+        int maxDisciplinas = request.maxDisciplinasOrDefault();
+        boolean incluirOptativas = request.incluirOptativasOrDefault();
+
+        long chConcluida = porCodigo.values().stream()
+                .filter(d -> concluidas.contains(d.codigo()))
+                .mapToLong(Disciplina::cargaHoraria)
+                .sum();
+
+        int totalPendentes = 0;
+        int chRestante = 0;
+        for (Disciplina d : curriculo.disciplinas()) {
+            if (concluidas.contains(d.codigo())) continue;
+            if (d.optativa() && !incluirOptativas) continue;
+            totalPendentes++;
+            chRestante += d.cargaHoraria();
+        }
+
+        // Disciplinas que o aluno já pode cursar no próximo semestre.
+        List<Disciplina> elegiveis = new ArrayList<>();
+        for (Disciplina d : curriculo.disciplinas()) {
+            if (concluidas.contains(d.codigo())) continue;
+            if (d.optativa() && !incluirOptativas) continue;
+
+            boolean preOk = true;
+            for (String pre : d.preRequisitos()) {
+                if (!porCodigo.containsKey(pre)) continue; // pré externo: ignorado
+                if (!concluidas.contains(pre)) { preOk = false; break; }
+            }
+            if (!preOk) continue;
+            if (d.cargaHorariaMinima() > 0 && chConcluida < d.cargaHorariaMinima()) continue;
+
+            elegiveis.add(d);
+        }
+
+        if (elegiveis.isEmpty()) {
+            avisos.add("Nenhuma disciplina disponível para o próximo semestre com as concluídas informadas.");
+            return new PlanoResponse("OK", 0, totalPendentes, chRestante, true, List.of(), avisos);
+        }
+
+        Set<String> codigosElegiveis = new HashSet<>();
+        for (Disciplina d : elegiveis) codigosElegiveis.add(d.codigo());
+
+        CpModel model = new CpModel();
+        Map<String, Literal> cursar = new LinkedHashMap<>();
+        for (Disciplina d : elegiveis) {
+            cursar.put(d.codigo(), model.newBoolVar("cursar_" + d.codigo()));
+        }
+
+        // Co-requisitos: se não concluído, precisa ser cursado junto (ou é impossível agora).
+        for (Disciplina d : elegiveis) {
+            for (String co : d.coRequisitos()) {
+                if (!porCodigo.containsKey(co) || concluidas.contains(co)) continue;
+                if (codigosElegiveis.contains(co)) {
+                    model.addImplication(cursar.get(d.codigo()), cursar.get(co));
+                } else {
+                    model.addBoolAnd(new Literal[]{cursar.get(d.codigo()).not()});
+                }
+            }
+        }
+
+        // Turmas/horários da oferta atual: escolha sem conflito.
+        Map<String, List<Turma>> turmasDaDisc = new LinkedHashMap<>();
+        Map<String, Literal[]> selecaoTurma = new HashMap<>();
+        List<String> semTurma = new ArrayList<>();
+        if (ofertaRepository.disponivel()) {
+            List<String> aproximados = new ArrayList<>();
+            for (Disciplina d : elegiveis) {
+                OfertaRepository.Casamento m = ofertaRepository.casar(d.nome());
+                if (m == null || m.turmas().isEmpty()) {
+                    semTurma.add(d.nome());
+                    continue;
+                }
+                turmasDaDisc.put(d.codigo(), m.turmas());
+                if (!m.exato()) {
+                    aproximados.add(String.format("%s ≈ \"%s\" (%.0f%%)",
+                            d.nome(), m.nomeOferta(), m.score() * 100));
+                }
+            }
+            if (!aproximados.isEmpty()) {
+                avisos.add("Casamento aproximado de nome (confira): " + String.join("; ", aproximados));
+            }
+
+            for (Map.Entry<String, List<Turma>> e : turmasDaDisc.entrySet()) {
+                String cod = e.getKey();
+                int n = e.getValue().size();
+                Literal[] sel = new Literal[n];
+                for (int i = 0; i < n; i++) {
+                    sel[i] = model.newBoolVar("turma_" + cod + "_" + i);
+                }
+                // Se cursar, escolhe exatamente uma turma; se não, nenhuma.
+                model.addEquality(LinearExpr.sum(sel), LinearExpr.sum(new Literal[]{cursar.get(cod)}));
+                selecaoTurma.put(cod, sel);
+            }
+
+            List<String> comTurma = new ArrayList<>(turmasDaDisc.keySet());
+            for (int x = 0; x < comTurma.size(); x++) {
+                for (int y = x + 1; y < comTurma.size(); y++) {
+                    String c1 = comTurma.get(x);
+                    String c2 = comTurma.get(y);
+                    List<Turma> t1 = turmasDaDisc.get(c1);
+                    List<Turma> t2 = turmasDaDisc.get(c2);
+                    for (int i = 0; i < t1.size(); i++) {
+                        for (int j = 0; j < t2.size(); j++) {
+                            if (t1.get(i).conflitaCom(t2.get(j))) {
+                                model.addBoolOr(new Literal[]{
+                                        selecaoTurma.get(c1)[i].not(),
+                                        selecaoTurma.get(c2)[j].not()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            avisos.add("Oferta de turmas indisponível; o semestre foi montado sem checagem de horário.");
+        }
+
+        // Capacidade: no máximo maxDisciplinas no semestre.
+        model.addLessOrEqual(LinearExpr.sum(cursar.values().toArray(new Literal[0])), maxDisciplinas);
+
+        // Objetivo: 1) maximizar quantidade de disciplinas; 2) priorizar gargalos.
+        long somaPrioridades = 0;
+        for (Disciplina d : elegiveis) somaPrioridades += grafoService.prioridade(d.codigo());
+        long pesoPorDisciplina = somaPrioridades + 1;
+
+        LinearExprBuilder objetivo = LinearExpr.newBuilder();
+        for (Disciplina d : elegiveis) {
+            objetivo.addTerm(cursar.get(d.codigo()), pesoPorDisciplina + grafoService.prioridade(d.codigo()));
+        }
+        model.maximize(objetivo);
+
+        CpSolver solver = new CpSolver();
+        solver.getParameters().setMaxTimeInSeconds(LIMITE_TEMPO_SEGUNDOS);
+        CpSolverStatus status = solver.solve(model);
+
+        if (status != CpSolverStatus.OPTIMAL && status != CpSolverStatus.FEASIBLE) {
+            return new PlanoResponse("INVIAVEL", 0, totalPendentes, chRestante, false,
+                    List.of(), List.of("Não foi possível montar o próximo semestre."));
+        }
+        boolean otimo = status == CpSolverStatus.OPTIMAL;
+
+        List<Disciplina> escolhidas = new ArrayList<>();
+        for (Disciplina d : elegiveis) {
+            if (solver.booleanValue(cursar.get(d.codigo()))) escolhidas.add(d);
+        }
+        escolhidas.sort(Comparator.comparingInt((Disciplina d) -> grafoService.prioridade(d.codigo())).reversed());
+
+        Map<String, Turma> turmaEscolhida = new HashMap<>();
+        for (Disciplina d : escolhidas) {
+            Literal[] sel = selecaoTurma.get(d.codigo());
+            if (sel == null) continue;
+            for (int i = 0; i < sel.length; i++) {
+                if (solver.booleanValue(sel[i])) {
+                    turmaEscolhida.put(d.codigo(), turmasDaDisc.get(d.codigo()).get(i));
+                    break;
+                }
+            }
+        }
+
+        Set<String> codigosEscolhidos = new HashSet<>();
+        for (Disciplina d : escolhidas) codigosEscolhidos.add(d.codigo());
+
+        // Disciplinas que são co-requisito de alguma escolhida ficam "travadas" (não podem ser trocadas,
+        // senão quebrariam o co-requisito da outra).
+        Set<String> travadasPorCoreq = new HashSet<>();
+        for (Disciplina d : escolhidas) {
+            for (String co : d.coRequisitos()) {
+                if (codigosEscolhidos.contains(co)) travadasPorCoreq.add(co);
+            }
+        }
+
+        List<DisciplinaPlanejadaDTO> dtos = new ArrayList<>();
+        int chTotal = 0;
+        for (Disciplina d : escolhidas) {
+            chTotal += d.cargaHoraria();
+            Turma turma = turmaEscolhida.get(d.codigo());
+            List<AlternativaDTO> alternativas = travadasPorCoreq.contains(d.codigo())
+                    ? List.of()
+                    : alternativasMesmoHorario(d, turma, elegiveis, codigosEscolhidos,
+                            turmasDaDisc, porCodigo, concluidas);
+            dtos.add(new DisciplinaPlanejadaDTO(
+                    d.codigo(), d.nome(), d.cargaHoraria(), d.optativa(), d.semipresencial(),
+                    grafoService.prioridade(d.codigo()),
+                    grafoService.getDescendentes(d.codigo()),
+                    montarMotivo(d),
+                    turma != null ? turma.codigo() : null,
+                    turma != null ? turma.horarios() : null,
+                    alternativas));
+        }
+
+        if (ofertaRepository.disponivel()) {
+            avisos.add(String.format("Oferta %s: %d de %d disciplina(s) escolhidas têm turma casada.",
+                    ofertaRepository.semestre(), turmaEscolhida.size(), escolhidas.size()));
+        }
+        if (!semTurma.isEmpty()) {
+            avisos.add("Disciplinas elegíveis sem turma casada na oferta (não entram na grade de horários): "
+                    + String.join("; ", semTurma));
+        }
+
+        List<PeriodoDTO> periodos = List.of(new PeriodoDTO(1, escolhidas.size(), chTotal, dtos));
+        return new PlanoResponse("OK", 1, totalPendentes, chRestante, otimo, periodos, avisos);
+    }
+
+    /**
+     * Encontra disciplinas elegíveis (não escolhidas) que possuem uma turma com <b>exatamente o
+     * mesmo horário</b> da turma escolhida para {@code alvo} — logo, podem ser trocadas sem mexer
+     * na grade nem gerar choque com as demais.
+     */
+    private List<AlternativaDTO> alternativasMesmoHorario(Disciplina alvo, Turma turmaAlvo,
+                                                          List<Disciplina> elegiveis,
+                                                          Set<String> escolhidas,
+                                                          Map<String, List<Turma>> turmasDaDisc,
+                                                          Map<String, Disciplina> porCodigo,
+                                                          Set<String> concluidas) {
+        if (turmaAlvo == null || turmaAlvo.horarios().isEmpty()) return List.of();
+        Set<String> assinaturaAlvo = assinaturaHorario(turmaAlvo);
+
+        List<AlternativaDTO> alternativas = new ArrayList<>();
+        for (Disciplina e : elegiveis) {
+            if (e.codigo().equals(alvo.codigo()) || escolhidas.contains(e.codigo())) continue;
+
+            boolean coreqOk = true;
+            for (String co : e.coRequisitos()) {
+                if (porCodigo.containsKey(co) && !concluidas.contains(co)) { coreqOk = false; break; }
+            }
+            if (!coreqOk) continue;
+
+            List<Turma> turmas = turmasDaDisc.get(e.codigo());
+            if (turmas == null) continue;
+            for (Turma t : turmas) {
+                if (assinaturaHorario(t).equals(assinaturaAlvo)) {
+                    alternativas.add(new AlternativaDTO(
+                            e.codigo(), e.nome(), e.cargaHoraria(), e.optativa(), e.semipresencial(),
+                            grafoService.prioridade(e.codigo()),
+                            grafoService.getDescendentes(e.codigo()),
+                            t.codigo(), t.horarios()));
+                    break;
+                }
+            }
+        }
+        alternativas.sort(Comparator.comparingInt(AlternativaDTO::prioridade).reversed());
+        return alternativas;
+    }
+
+    private Set<String> assinaturaHorario(Turma turma) {
+        Set<String> assinatura = new HashSet<>();
+        for (com.pucminas.gradeinteligente.domain.Horario h : turma.horarios()) {
+            assinatura.add(h.dia() + "|" + h.inicio() + "|" + h.fim());
+        }
+        return assinatura;
+    }
+
     private Map<String, Literal[]> criarSelecaoDeTurmas(CpModel model, Map<String, IntVar> termo,
                                                         Map<String, List<Turma>> turmasDaDisc,
                                                         Map<String, Literal> emPrimeiroPeriodo) {
@@ -328,7 +603,8 @@ public class PlanejadorService {
                         grafoService.getDescendentes(d.codigo()),
                         montarMotivo(d),
                         turma != null ? turma.codigo() : null,
-                        turma != null ? turma.horarios() : null));
+                        turma != null ? turma.horarios() : null,
+                        List.of()));
             }
             periodos.add(new PeriodoDTO(numeroSequencial, lista.size(), chTotal, dtos));
         }

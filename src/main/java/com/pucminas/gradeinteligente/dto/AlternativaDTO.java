@@ -4,7 +4,11 @@ import com.pucminas.gradeinteligente.domain.Horario;
 
 import java.util.List;
 
-public record DisciplinaPlanejadaDTO(
+/**
+ * Disciplina que pode substituir uma escolhida no próximo semestre <b>sem alterar a grade</b>:
+ * ocupa exatamente a mesma faixa de horário (mesmos dias e intervalos), então é uma troca livre.
+ */
+public record AlternativaDTO(
         String codigo,
         String nome,
         int cargaHoraria,
@@ -12,12 +16,7 @@ public record DisciplinaPlanejadaDTO(
         boolean semipresencial,
         int prioridade,
         int destrava,
-        String motivo,
         String turma,
-        List<Horario> horarios,
-        List<AlternativaDTO> alternativas
+        List<Horario> horarios
 ) {
-    public DisciplinaPlanejadaDTO {
-        alternativas = alternativas == null ? List.of() : List.copyOf(alternativas);
-    }
 }

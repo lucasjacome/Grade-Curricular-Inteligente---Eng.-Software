@@ -43,6 +43,7 @@ async function init() {
 
 function ligarEventos() {
     document.getElementById("btnCalcular").addEventListener("click", calcular);
+    document.getElementById("btnProximoSemestre").addEventListener("click", calcularProximoSemestre);
     document.getElementById("btnLimpar").addEventListener("click", limpar);
     document.getElementById("busca").addEventListener("input", filtrarBusca);
     document.getElementById("buscaConsulta").addEventListener("input", filtrarConsulta);
@@ -348,7 +349,7 @@ async function calcular() {
             body: JSON.stringify(body),
         }).then(r => r.json());
         estado.ultimoPlano = plano;
-        renderPlano(plano);
+        renderPlano(plano, "rota");
         trocarTab("plano");
     } catch (e) {
         alert("Erro ao calcular o plano: " + e.message);
@@ -358,9 +359,42 @@ async function calcular() {
     }
 }
 
-function renderPlano(plano) {
+async function calcularProximoSemestre() {
+    const btn = document.getElementById("btnProximoSemestre");
+    btn.disabled = true;
+    btn.textContent = "Calculando…";
+    try {
+        const body = {
+            concluidas: [...estado.concluidas],
+            maxDisciplinasPorPeriodo: Number(document.getElementById("maxDisc").value),
+            incluirOptativas: document.getElementById("incluirOptativas").checked,
+            considerarHorarios: true,
+        };
+        const plano = await fetch(`${API}/api/plano/proximo-semestre`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        }).then(r => r.json());
+        estado.ultimoPlano = plano;
+        renderPlano(plano, "semestre");
+        trocarTab("plano");
+    } catch (e) {
+        alert("Erro ao calcular o próximo semestre: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Calcular próximo semestre";
+    }
+}
+
+function renderPlano(plano, modo = "rota") {
     document.getElementById("planoVazio").classList.add("hidden");
     document.getElementById("planoConteudo").classList.remove("hidden");
+
+    if (modo === "semestre") {
+        inicializarSemestre(plano);
+        renderSemestre();
+        return;
+    }
 
     const selo = plano.otimoComprovado
         ? '<span class="text-emerald-400 font-semibold text-sm">✓ ótimo</span>'
@@ -416,13 +450,140 @@ function renderPlano(plano) {
         periodos.appendChild(col);
     });
 
-    const avisos = document.getElementById("avisos");
-    avisos.innerHTML = (plano.avisos && plano.avisos.length)
-        ? plano.avisos.map(a => `<div class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">⚠ ${a}</div>`).join("")
-        : "";
-
+    renderAvisos(plano.avisos);
     renderGrade((plano.periodos && plano.periodos[0]) ? plano.periodos[0].disciplinas : []);
     pintarGrafoPorPlano(mapaPeriodoDoNo, total);
+}
+
+function renderAvisos(lista) {
+    document.getElementById("avisos").innerHTML = (lista && lista.length)
+        ? lista.map(a => `<div class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">⚠ ${a}</div>`).join("")
+        : "";
+}
+
+/* ---------- Próximo semestre (com troca de disciplinas no mesmo horário) ---------- */
+
+// Cada "slot" guarda as opções que ocupam o mesmo horário e qual está escolhida.
+function inicializarSemestre(plano) {
+    const disciplinas = (plano.periodos && plano.periodos[0]) ? plano.periodos[0].disciplinas : [];
+    const slots = disciplinas.map(d => {
+        const original = {
+            codigo: d.codigo, nome: d.nome, cargaHoraria: d.cargaHoraria,
+            optativa: d.optativa, semipresencial: d.semipresencial,
+            prioridade: d.prioridade, destrava: d.destrava,
+            motivo: d.motivo, turma: d.turma, horarios: d.horarios,
+        };
+        const alternativas = (d.alternativas || []).map(a => ({
+            codigo: a.codigo, nome: a.nome, cargaHoraria: a.cargaHoraria,
+            optativa: a.optativa, semipresencial: a.semipresencial,
+            prioridade: a.prioridade, destrava: a.destrava,
+            motivo: `Alternativa no mesmo horário de ${d.nome}.`,
+            turma: a.turma, horarios: a.horarios,
+        }));
+        return { opcoes: [original, ...alternativas], escolhido: d.codigo };
+    });
+    estado.semestre = { plano, slots };
+}
+
+function opcaoAtual(slot) {
+    return slot.opcoes.find(o => o.codigo === slot.escolhido) || slot.opcoes[0];
+}
+
+function trocarAlternativa(slotIdx, codigo) {
+    const s = estado.semestre;
+    if (!s || !s.slots[slotIdx]) return;
+    s.slots[slotIdx].escolhido = codigo;
+    renderSemestre();
+}
+
+function renderSemestre() {
+    const s = estado.semestre;
+    if (!s) return;
+    const plano = s.plano;
+    const atuais = s.slots.map(opcaoAtual);
+
+    const selo = plano.otimoComprovado
+        ? '<span class="text-emerald-400 font-semibold text-sm">✓ ótimo</span>'
+        : '<span class="text-amber-400 font-semibold text-sm">≈ viável</span>';
+    const metric = (valor, rotulo) => `
+        <div class="bg-slate-800/60 border border-slate-700 rounded-2xl p-4">
+            <div class="text-2xl font-extrabold text-emerald-400">${valor}</div>
+            <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-0.5">${rotulo}</div>
+        </div>`;
+
+    const chSem = atuais.reduce((acc, o) => acc + o.cargaHoraria, 0);
+    const gargalos = atuais.filter(o => o.destrava >= 3).length;
+    document.getElementById("resumo").innerHTML =
+        metric(atuais.length, "Disciplinas no próximo semestre") +
+        metric(chSem + "h", "Carga horária do semestre") +
+        metric(gargalos, "Gargalos priorizados") +
+        metric(selo, "Qualidade");
+
+    const periodos = document.getElementById("periodos");
+    periodos.innerHTML = "";
+    const col = document.createElement("div");
+    col.className = "shrink-0 w-72 bg-slate-800/50 border border-slate-700 rounded-2xl p-3";
+    col.style.borderTop = `4px solid ${COR.concluida.bg}`;
+    col.innerHTML = `
+        <h4 class="font-bold text-sm text-white">Próximo semestre</h4>
+        <div class="text-[11px] text-slate-500 mb-3">${atuais.length} disciplinas · ${chSem}h</div>`;
+
+    s.slots.forEach((slot, idx) => {
+        const d = opcaoAtual(slot);
+        const borda = d.optativa ? COR.optativa.bg : (d.destrava >= 3 ? COR.gargalo.bg : "transparent");
+        const el = document.createElement("div");
+        el.className = "rounded-xl border border-slate-700 bg-slate-900/70 p-2.5 mb-2";
+        el.style.borderLeft = `4px solid ${borda}`;
+        const tag = d.destrava >= 3
+            ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full ml-1">gargalo</span>'
+            : (d.optativa ? '<span class="text-[9px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded-full ml-1">optativa</span>' : "");
+        const horarioHtml = (d.turma && d.horarios && d.horarios.length)
+            ? `<div class="mt-2 text-[10px] text-sky-300 bg-sky-500/10 border border-sky-500/25 rounded-lg px-2 py-1">
+                 <span class="font-semibold">Turma ${d.turma}</span> · ${d.horarios.map(h => `${h.dia} ${h.inicio}–${h.fim}`).join(" · ")}
+               </div>`
+            : "";
+
+        let seletorHtml = "";
+        if (slot.opcoes.length > 1) {
+            const options = slot.opcoes.map(o => {
+                const marca = o.destrava >= 3 ? " · gargalo" : (o.optativa ? " · optativa" : "");
+                const sel = o.codigo === slot.escolhido ? " selected" : "";
+                return `<option value="${o.codigo}"${sel}>${o.nome} (destrava ${o.destrava}${marca})</option>`;
+            }).join("");
+            seletorHtml = `
+                <div class="mt-2">
+                    <label class="block text-[9px] uppercase tracking-wide text-emerald-400/80 font-semibold mb-1">
+                        Trocar (mesmo horário) — ${slot.opcoes.length} opções
+                    </label>
+                    <select onchange="trocarAlternativa(${idx}, this.value)"
+                            class="w-full text-[12px] rounded-lg bg-slate-800 border border-emerald-600/40 text-slate-100 px-2 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
+                        ${options}
+                    </select>
+                </div>`;
+        }
+
+        el.innerHTML = `
+            <div class="text-[13px] font-semibold leading-tight text-slate-100">${d.nome}${tag}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">${d.codigo} · ${d.cargaHoraria}h${d.semipresencial ? " · semipresencial" : ""}</div>
+            <div class="text-[11px] text-slate-400 mt-1.5">${d.motivo}</div>
+            ${horarioHtml}
+            ${seletorHtml}`;
+        col.appendChild(el);
+    });
+    periodos.appendChild(col);
+
+    const avisosSemestre = (plano.avisos || []).slice();
+    const totalTrocaveis = s.slots.filter(sl => sl.opcoes.length > 1).length;
+    if (totalTrocaveis > 0) {
+        avisosSemestre.unshift(`${totalTrocaveis} disciplina(s) têm alternativas no mesmo horário — use o seletor para trocar sem mexer na grade.`);
+    }
+    renderAvisos(avisosSemestre);
+
+    renderGrade(atuais);
+
+    const mapaPeriodoDoNo = {};
+    atuais.forEach(o => { mapaPeriodoDoNo[o.codigo] = 0; });
+    pintarGrafoPorPlano(mapaPeriodoDoNo, 1);
 }
 
 const GRADE_DIAS = [
