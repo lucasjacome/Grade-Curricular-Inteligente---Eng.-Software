@@ -4,9 +4,18 @@
   "instituicao": "PUC Minas - Campus Lourdes",
   "cargaHorariaTotal": 3840,
   "situacao": "Em extinção",
+  "custos": {
+    "semestre": "2026/2",
+    "matricula": 1892.00,
+    "valorHoraMensalPadrao": 3.4403333,
+    "parcelasMensais": 5,
+    "tarifasPorCodigo": {
+      "57384": 9.0949074
+    }
+  },
   "disciplinas": [
     { "codigo": "60422", "nome": "Algoritmos e Estruturas de Dados I", "cargaHoraria": 120, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
-    { "codigo": "57384", "nome": "Cálculo I", "cargaHoraria": 80, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "57384", "nome": "Cálculo I", "cargaHoraria": 80, "cargaHorariaCobranca": 108, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
     { "codigo": "63317", "nome": "Desenvolvimento de Interfaces Web", "cargaHoraria": 80, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": true },
     { "codigo": "56963", "nome": "Fundamentos de Engenharia de Software", "cargaHoraria": 80, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
     { "codigo": "60388", "nome": "Introdução à Computação", "cargaHoraria": 70, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": true },

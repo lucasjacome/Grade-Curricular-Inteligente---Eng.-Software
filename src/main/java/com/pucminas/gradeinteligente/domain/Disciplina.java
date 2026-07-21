@@ -13,6 +13,7 @@ public record Disciplina(
         String codigo,
         String nome,
         int cargaHoraria,
+        Integer cargaHorariaCobranca,
         int periodoSugerido,
         List<String> preRequisitos,
         List<String> coRequisitos,
@@ -25,6 +26,11 @@ public record Disciplina(
         preRequisitos = preRequisitos == null ? List.of() : List.copyOf(preRequisitos);
         coRequisitos = coRequisitos == null ? List.of() : List.copyOf(coRequisitos);
         horarios = horarios == null ? List.of() : List.copyOf(horarios);
+    }
+
+    /** Carga horária usada pelo SGA na cobrança (pode diferir do currículo). */
+    public int chCobranca() {
+        return cargaHorariaCobranca != null ? cargaHorariaCobranca : cargaHoraria;
     }
 
     public boolean temHorario() {

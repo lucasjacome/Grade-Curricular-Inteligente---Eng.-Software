@@ -13,6 +13,7 @@ public record Curriculo(
         String instituicao,
         int cargaHorariaTotal,
         String situacao,
+        Custos custos,
         List<Disciplina> disciplinas
 ) {
     /** Índice código -> disciplina, preservando a ordem do JSON. */

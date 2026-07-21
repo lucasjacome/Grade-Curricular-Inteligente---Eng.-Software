@@ -133,6 +133,17 @@ public class PlanejadorService {
 
         aplicarCapacidade(model, termo, horizonte, maxDisciplinas);
 
+        // Contagem de disciplinas no 1º período (empate após minimizar o makespan).
+        List<Literal> noPrimeiroPeriodo = new ArrayList<>();
+        for (Disciplina d : pendentes) {
+            Literal emT1 = model.newBoolVar("countT1_" + d.codigo());
+            model.addEquality(termo.get(d.codigo()), 1).onlyEnforceIf(emT1);
+            model.addDifferent(termo.get(d.codigo()), 1).onlyEnforceIf(emT1.not());
+            noPrimeiroPeriodo.add(emT1);
+        }
+        IntVar qtdPrimeiroPeriodo = model.newIntVar(0, maxDisciplinas, "qtd_t1");
+        model.addEquality(qtdPrimeiroPeriodo, LinearExpr.sum(noPrimeiroPeriodo.toArray(new Literal[0])));
+
         // Turmas/horários: escolha de turma sem conflito no 1º período (próximo semestre).
         Map<String, List<Turma>> turmasDaDisc = new LinkedHashMap<>();
         Map<String, Literal[]> selecaoTurma = new HashMap<>();
@@ -169,10 +180,13 @@ public class PlanejadorService {
         for (Disciplina d : pendentes) {
             pesoSecundarioMax += (long) grafoService.prioridade(d.codigo()) * horizonte;
         }
-        long pesoPrimario = pesoSecundarioMax + 1;
+        // Lexicográfico: 1) menos períodos; 2) mais disciplinas no 1º período; 3) gargalos mais cedo.
+        long pesoContagemT1 = pesoSecundarioMax + maxDisciplinas + 1;
+        long pesoPrimario = pesoContagemT1 * (maxDisciplinas + 1L) + horizonte + 1;
 
         LinearExprBuilder objetivo = LinearExpr.newBuilder();
         objetivo.addTerm(makespan, pesoPrimario);
+        objetivo.addTerm(qtdPrimeiroPeriodo, -pesoContagemT1);
         for (Disciplina d : pendentes) {
             objetivo.addTerm(termo.get(d.codigo()), grafoService.prioridade(d.codigo()));
         }
@@ -284,7 +298,8 @@ public class PlanejadorService {
         Map<String, List<Turma>> turmasDaDisc = new LinkedHashMap<>();
         Map<String, Literal[]> selecaoTurma = new HashMap<>();
         List<String> semTurma = new ArrayList<>();
-        if (ofertaRepository.disponivel()) {
+        boolean usarHorarios = request.considerarHorariosOrDefault() && ofertaRepository.disponivel();
+        if (usarHorarios) {
             List<String> aproximados = new ArrayList<>();
             for (Disciplina d : elegiveis) {
                 OfertaRepository.Casamento m = ofertaRepository.casar(d.nome());
@@ -333,7 +348,14 @@ public class PlanejadorService {
                     }
                 }
             }
-        } else {
+
+            // Sem turma na oferta atual: não pode ser cursada com checagem de horário.
+            for (Disciplina d : elegiveis) {
+                if (!turmasDaDisc.containsKey(d.codigo())) {
+                    model.addBoolAnd(new Literal[]{cursar.get(d.codigo()).not()});
+                }
+            }
+        } else if (request.considerarHorariosOrDefault()) {
             avisos.add("Oferta de turmas indisponível; o semestre foi montado sem checagem de horário.");
         }
 
@@ -348,6 +370,13 @@ public class PlanejadorService {
         LinearExprBuilder objetivo = LinearExpr.newBuilder();
         for (Disciplina d : elegiveis) {
             objetivo.addTerm(cursar.get(d.codigo()), pesoPorDisciplina + grafoService.prioridade(d.codigo()));
+            Literal[] sel = selecaoTurma.get(d.codigo());
+            if (sel != null) {
+                List<Turma> turmas = turmasDaDisc.get(d.codigo());
+                for (int i = 0; i < sel.length; i++) {
+                    objetivo.addTerm(sel[i], bonusHorarioTurma(turmas.get(i)));
+                }
+            }
         }
         model.maximize(objetivo);
 
@@ -483,15 +512,25 @@ public class PlanejadorService {
             for (int i = 0; i < n; i++) {
                 sel[i] = model.newBoolVar("turma_" + cod + "_" + i);
             }
-            model.addExactlyOne(sel);
-            selecao.put(cod, sel);
-
             Literal emT1 = model.newBoolVar("emT1_" + cod);
             model.addEquality(termo.get(cod), 1).onlyEnforceIf(emT1);
             model.addDifferent(termo.get(cod), 1).onlyEnforceIf(emT1.not());
             emPrimeiroPeriodo.put(cod, emT1);
+            // Só escolhe turma da oferta atual se a disciplina cair no 1º período.
+            model.addEquality(LinearExpr.sum(sel), LinearExpr.sum(new Literal[]{emT1}));
+            selecao.put(cod, sel);
         }
         return selecao;
+    }
+
+    /** Bônus leve para turmas que ocupam o primeiro horário noturno (19:00). */
+    private int bonusHorarioTurma(Turma turma) {
+        int bonus = 0;
+        for (com.pucminas.gradeinteligente.domain.Horario h : turma.horarios()) {
+            bonus += 1;
+            if ("19:00".equals(h.inicio())) bonus += 5;
+        }
+        return bonus;
     }
 
     private int aplicarConflitoPrimeiroPeriodo(CpModel model, Map<String, List<Turma>> turmasDaDisc,

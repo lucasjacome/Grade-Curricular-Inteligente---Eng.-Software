@@ -1,6 +1,58 @@
 const API = "";
 const STORAGE_KEY = "gci.concluidas.v1";
 
+function formatarBRL(v) {
+    return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function custosConfig() {
+    return estado.curriculo?.custos ?? null;
+}
+
+function disciplinaParaCusto(item) {
+    if (!item) return null;
+    return disciplinaDe(item.codigo) || item;
+}
+
+function chCobranca(d) {
+    const full = disciplinaParaCusto(d);
+    if (!full) return 0;
+    return full.cargaHorariaCobranca ?? full.cargaHoraria ?? 0;
+}
+
+function valorHoraMensal(codigo) {
+    const c = custosConfig();
+    if (!c) return 3.4403333;
+    return c.tarifasPorCodigo?.[codigo] ?? c.valorHoraMensalPadrao;
+}
+
+/** Mensalidade que a disciplina agrega (parcelas 2–6 do SGA). */
+function custoMensalDisciplina(d) {
+    const full = disciplinaParaCusto(d);
+    if (!full) return 0;
+    return chCobranca(full) * valorHoraMensal(full.codigo);
+}
+
+function mensalidadeSemestre(itens) {
+    return (itens || []).reduce((acc, item) => acc + custoMensalDisciplina(item), 0);
+}
+
+function totalSemestre(itens) {
+    const c = custosConfig();
+    const matricula = c?.matricula ?? 1892;
+    const parcelas = c?.parcelasMensais ?? 5;
+    return matricula + parcelas * mensalidadeSemestre(itens);
+}
+
+function textoChCobranca(d) {
+    const full = disciplinaParaCusto(d);
+    if (!full) return "";
+    const ch = full.cargaHoraria;
+    const cob = chCobranca(full);
+    if (cob !== ch) return `${ch}h (${cob}h no SGA)`;
+    return `${ch}h`;
+}
+
 const estado = {
     curriculo: null,
     grafo: null,
@@ -511,13 +563,17 @@ function renderSemestre() {
             <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-0.5">${rotulo}</div>
         </div>`;
 
-    const chSem = atuais.reduce((acc, o) => acc + o.cargaHoraria, 0);
+    const chSem = atuais.reduce((acc, o) => acc + chCobranca(o), 0);
     const gargalos = atuais.filter(o => o.destrava >= 3).length;
+    const mensalidade = mensalidadeSemestre(atuais);
+    const total = totalSemestre(atuais);
+    const parcelas = custosConfig()?.parcelasMensais ?? 5;
+    const matricula = custosConfig()?.matricula ?? 1892;
     document.getElementById("resumo").innerHTML =
         metric(atuais.length, "Disciplinas no próximo semestre") +
-        metric(chSem + "h", "Carga horária do semestre") +
-        metric(gargalos, "Gargalos priorizados") +
-        metric(selo, "Qualidade");
+        metric(chSem + "h", "CH cobrada no SGA") +
+        metric("~" + formatarBRL(mensalidade), `Mensalidade (${parcelas}x)`) +
+        metric("~" + formatarBRL(total), "Total do semestre");
 
     const periodos = document.getElementById("periodos");
     periodos.innerHTML = "";
@@ -526,7 +582,8 @@ function renderSemestre() {
     col.style.borderTop = `4px solid ${COR.concluida.bg}`;
     col.innerHTML = `
         <h4 class="font-bold text-sm text-white">Próximo semestre</h4>
-        <div class="text-[11px] text-slate-500 mb-3">${atuais.length} disciplinas · ${chSem}h</div>`;
+        <div class="text-[11px] text-slate-500 mb-1">${atuais.length} disciplinas · ${chSem}h cobradas · ${gargalos} gargalo(s) · ${selo}</div>
+        <div class="text-[10px] text-slate-500 mb-3">Matrícula ${formatarBRL(matricula)} + ${parcelas}× ~${formatarBRL(mensalidade)} · sem bolsas/taxas.</div>`;
 
     s.slots.forEach((slot, idx) => {
         const d = opcaoAtual(slot);
@@ -564,7 +621,7 @@ function renderSemestre() {
 
         el.innerHTML = `
             <div class="text-[13px] font-semibold leading-tight text-slate-100">${d.nome}${tag}</div>
-            <div class="text-[10px] text-slate-500 mt-0.5">${d.codigo} · ${d.cargaHoraria}h${d.semipresencial ? " · semipresencial" : ""}</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">${d.codigo} · ${textoChCobranca(d)}${d.semipresencial ? " · semipresencial" : ""} · <span class="text-emerald-400 font-semibold">~${formatarBRL(custoMensalDisciplina(d))}/mês</span></div>
             <div class="text-[11px] text-slate-400 mt-1.5">${d.motivo}</div>
             ${horarioHtml}
             ${seletorHtml}`;
@@ -964,6 +1021,22 @@ function montarConteudoModal(codigo) {
             </div>
         </div>` : `<p class="text-[12px] text-slate-500">Sem exigência de carga horária mínima acumulada.</p>`;
 
+    // Bloco de custo mensal estimado (o quanto a disciplina soma na mensalidade)
+    const chCob = chCobranca(d);
+    const vHora = valorHoraMensal(d.codigo);
+    const tarifaEspecial = custosConfig()?.tarifasPorCodigo?.[d.codigo];
+    const custoBloco = `
+        <div class="rounded-xl border border-emerald-600/40 bg-emerald-500/10 px-4 py-3 flex items-center justify-between gap-3">
+            <div>
+                <div class="text-[11px] uppercase tracking-wide text-emerald-300/80 font-semibold">Custo mensal estimado</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">${chCob}h × ${formatarBRL(vHora)}/h${tarifaEspecial ? " · tarifa adaptação" : ""} · fora matrícula/bolsas</div>
+            </div>
+            <div class="text-right whitespace-nowrap">
+                <span class="text-xl font-extrabold text-emerald-400 tabular-nums">${formatarBRL(custoMensalDisciplina(d))}</span>
+                <span class="text-[11px] text-emerald-300/70">/mês</span>
+            </div>
+        </div>`;
+
     const secaoLista = (titulo, subtitulo, itens, vazio) => `
         <div>
             <h4 class="text-[13px] font-bold text-white">${titulo}</h4>
@@ -980,7 +1053,7 @@ function montarConteudoModal(codigo) {
                     ${badges}
                 </div>
                 <p class="text-xs text-slate-400 mt-1 tabular-nums">
-                    ${d.codigo} · ${d.cargaHoraria}h · ${d.periodoSugerido}º período sugerido
+                    ${d.codigo} · ${textoChCobranca(d)} · ${d.periodoSugerido}º período sugerido
                 </p>
             </div>
             <button type="button" onclick="fecharModal()"
@@ -1006,6 +1079,8 @@ function montarConteudoModal(codigo) {
             </div>
 
             ${chBloco}
+
+            ${custoBloco}
 
             <div class="border-t border-slate-800 pt-4">
                 <h3 class="text-sm font-bold text-white mb-3">O que você precisa para cursá-la</h3>
