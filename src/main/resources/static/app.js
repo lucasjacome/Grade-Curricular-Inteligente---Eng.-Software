@@ -1,5 +1,6 @@
 const API = "";
-const STORAGE_KEY = "gci.concluidas.v1";
+const STORAGE_KEY_PREFIX = "gci.concluidas.v1.";
+const STORAGE_CURRICULO = "gci.curriculo.codigo";
 
 function formatarBRL(v) {
     return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -55,11 +56,14 @@ function textoChCobranca(d) {
 
 const estado = {
     curriculo: null,
+    curriculos: [],
+    codigoCurriculo: localStorage.getItem(STORAGE_CURRICULO) || "37203",
     grafo: null,
     concluidas: new Set(),
     cy: null,
     cardByCode: {},
     ultimoPlano: null,
+    semestre: null,
 };
 
 // Paleta simples e consistente (4 categorias)
@@ -74,23 +78,66 @@ document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
     if (window.cytoscapeDagre) cytoscape.use(window.cytoscapeDagre);
+
+    estado.curriculos = await fetch(`${API}/api/curriculos`).then(r => r.json());
+    popularSeletorCurriculo();
+    await carregarCurriculoAtivo();
+    ligarEventos();
+}
+
+function popularSeletorCurriculo() {
+    const sel = document.getElementById("selCurriculo");
+    sel.innerHTML = "";
+    const existe = estado.curriculos.some(c => c.codigoCurriculo === estado.codigoCurriculo);
+    if (!existe && estado.curriculos.length) {
+        estado.codigoCurriculo = estado.curriculos[0].codigoCurriculo;
+    }
+    estado.curriculos.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.codigoCurriculo;
+        opt.textContent = `${c.rotulo} · ${c.codigoCurriculo}`;
+        if (c.codigoCurriculo === estado.codigoCurriculo) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+async function carregarCurriculoAtivo() {
+    const codigo = estado.codigoCurriculo;
+    localStorage.setItem(STORAGE_CURRICULO, codigo);
     carregarConcluidas();
 
     const [curriculo, grafo] = await Promise.all([
-        fetch(`${API}/api/curriculo`).then(r => r.json()),
-        fetch(`${API}/api/grafo`).then(r => r.json()),
+        fetch(`${API}/api/curriculo?codigo=${encodeURIComponent(codigo)}`).then(r => r.json()),
+        fetch(`${API}/api/grafo?codigo=${encodeURIComponent(codigo)}`).then(r => r.json()),
     ]);
     estado.curriculo = curriculo;
     estado.grafo = grafo;
+    estado.ultimoPlano = null;
+    estado.semestre = null;
 
+    const rotulo = curriculo.rotulo || (`Currículo ${curriculo.codigoCurriculo}`);
     document.getElementById("subtitulo").textContent =
-        `${curriculo.curso} · Currículo ${curriculo.codigoCurriculo} · ${curriculo.instituicao}`;
+        `${curriculo.curso} · ${rotulo} · ${curriculo.instituicao}`;
+
+    document.getElementById("planoVazio")?.classList.remove("hidden");
+    document.getElementById("planoConteudo")?.classList.add("hidden");
+    document.getElementById("resumo").innerHTML = "";
+    document.getElementById("periodos").innerHTML = "";
+    document.getElementById("avisos").innerHTML = "";
+    document.getElementById("gradeSemanal").innerHTML = "";
 
     renderChecklist();
     renderGrafo();
     renderConsulta();
-    ligarEventos();
     atualizarProgresso();
+}
+
+async function trocarCurriculo(codigo) {
+    if (!codigo || codigo === estado.codigoCurriculo) return;
+    estado.codigoCurriculo = codigo;
+    const sel = document.getElementById("selCurriculo");
+    if (sel) sel.value = codigo;
+    await carregarCurriculoAtivo();
 }
 
 function ligarEventos() {
@@ -99,6 +146,7 @@ function ligarEventos() {
     document.getElementById("btnLimpar").addEventListener("click", limpar);
     document.getElementById("busca").addEventListener("input", filtrarBusca);
     document.getElementById("buscaConsulta").addEventListener("input", filtrarConsulta);
+    document.getElementById("selCurriculo").addEventListener("change", e => trocarCurriculo(e.target.value));
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => trocarTab(btn.dataset.tab));
     });
@@ -108,13 +156,23 @@ function ligarEventos() {
     });
 }
 
-/* ---------- Persistência ---------- */
+/* ---------- Persistência (por currículo) ---------- */
+
+function storageKeyConcluidas() {
+    return STORAGE_KEY_PREFIX + (estado.codigoCurriculo || "37203");
+}
 
 function carregarConcluidas() {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) estado.concluidas = new Set(JSON.parse(raw).map(String));
-    } catch { /* ignore */ }
+        let raw = localStorage.getItem(storageKeyConcluidas());
+        // Migração: chave antiga única → currículo 37203
+        if (!raw && estado.codigoCurriculo === "37203") {
+            raw = localStorage.getItem("gci.concluidas.v1");
+        }
+        estado.concluidas = raw ? new Set(JSON.parse(raw).map(String)) : new Set();
+    } catch {
+        estado.concluidas = new Set();
+    }
 }
 
 function estaConcluida(codigo) {
@@ -122,7 +180,7 @@ function estaConcluida(codigo) {
 }
 
 function salvarConcluidas() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...estado.concluidas]));
+    localStorage.setItem(storageKeyConcluidas(), JSON.stringify([...estado.concluidas]));
 }
 
 /* ---------- Abas ---------- */
@@ -394,6 +452,7 @@ async function calcular() {
             maxDisciplinasPorPeriodo: Number(document.getElementById("maxDisc").value),
             incluirOptativas: document.getElementById("incluirOptativas").checked,
             considerarHorarios: true,
+            codigoCurriculo: estado.codigoCurriculo,
         };
         const plano = await fetch(`${API}/api/plano`, {
             method: "POST",
@@ -421,6 +480,7 @@ async function calcularProximoSemestre() {
             maxDisciplinasPorPeriodo: Number(document.getElementById("maxDisc").value),
             incluirOptativas: document.getElementById("incluirOptativas").checked,
             considerarHorarios: true,
+            codigoCurriculo: estado.codigoCurriculo,
         };
         const plano = await fetch(`${API}/api/plano/proximo-semestre`, {
             method: "POST",
@@ -513,7 +573,7 @@ function renderAvisos(lista) {
         : "";
 }
 
-/* ---------- Próximo semestre (com troca de disciplinas no mesmo horário) ---------- */
+/* ---------- Próximo semestre (troca no mesmo horário + remover/restaurar) ---------- */
 
 // Cada "slot" guarda as opções que ocupam o mesmo horário e qual está escolhida.
 function inicializarSemestre(plano) {
@@ -532,9 +592,13 @@ function inicializarSemestre(plano) {
             motivo: `Alternativa no mesmo horário de ${d.nome}.`,
             turma: a.turma, horarios: a.horarios,
         }));
-        return { opcoes: [original, ...alternativas], escolhido: d.codigo };
+        return { opcoes: [original, ...alternativas], escolhido: d.codigo, removido: false };
     });
     estado.semestre = { plano, slots };
+}
+
+function slotsAtivos() {
+    return (estado.semestre?.slots || []).filter(sl => !sl.removido);
 }
 
 function opcaoAtual(slot) {
@@ -543,16 +607,51 @@ function opcaoAtual(slot) {
 
 function trocarAlternativa(slotIdx, codigo) {
     const s = estado.semestre;
-    if (!s || !s.slots[slotIdx]) return;
+    if (!s || !s.slots[slotIdx] || s.slots[slotIdx].removido) return;
     s.slots[slotIdx].escolhido = codigo;
     renderSemestre();
+}
+
+function removerDisciplinaSemestre(slotIdx) {
+    const s = estado.semestre;
+    if (!s || !s.slots[slotIdx]) return;
+    s.slots[slotIdx].removido = true;
+    renderSemestre();
+}
+
+function restaurarDisciplinaSemestre(slotIdx) {
+    const s = estado.semestre;
+    if (!s || !s.slots[slotIdx]) return;
+    const candidato = opcaoAtual(s.slots[slotIdx]);
+    const conflito = slotsAtivos().some(sl => disciplinasConflitam(opcaoAtual(sl), candidato));
+    if (conflito) {
+        alert("Não dá para restaurar: o horário conflita com outra disciplina que ainda está na grade.");
+        return;
+    }
+    s.slots[slotIdx].removido = false;
+    renderSemestre();
+}
+
+function disciplinasConflitam(a, b) {
+    if (!a?.horarios?.length || !b?.horarios?.length) return false;
+    for (const h1 of a.horarios) {
+        for (const h2 of b.horarios) {
+            if ((h1.dia || "").toUpperCase() !== (h2.dia || "").toUpperCase()) continue;
+            if (paraMin(h1.inicio) < paraMin(h2.fim) && paraMin(h2.inicio) < paraMin(h1.fim)) return true;
+        }
+    }
+    return false;
 }
 
 function renderSemestre() {
     const s = estado.semestre;
     if (!s) return;
     const plano = s.plano;
-    const atuais = s.slots.map(opcaoAtual);
+    const ativos = slotsAtivos();
+    const atuais = ativos.map(opcaoAtual);
+    const removidos = s.slots
+        .map((sl, idx) => ({ sl, idx }))
+        .filter(({ sl }) => sl.removido);
 
     const selo = plano.otimoComprovado
         ? '<span class="text-emerald-400 font-semibold text-sm">✓ ótimo</span>'
@@ -578,18 +677,27 @@ function renderSemestre() {
     const periodos = document.getElementById("periodos");
     periodos.innerHTML = "";
     const col = document.createElement("div");
-    col.className = "shrink-0 w-72 bg-slate-800/50 border border-slate-700 rounded-2xl p-3";
+    col.className = "shrink-0 w-80 bg-slate-800/50 border border-slate-700 rounded-2xl p-3";
     col.style.borderTop = `4px solid ${COR.concluida.bg}`;
     col.innerHTML = `
         <h4 class="font-bold text-sm text-white">Próximo semestre</h4>
         <div class="text-[11px] text-slate-500 mb-1">${atuais.length} disciplinas · ${chSem}h cobradas · ${gargalos} gargalo(s) · ${selo}</div>
-        <div class="text-[10px] text-slate-500 mb-3">Matrícula ${formatarBRL(matricula)} + ${parcelas}× ~${formatarBRL(mensalidade)} · sem bolsas/taxas.</div>`;
+        <div class="text-[10px] text-slate-500 mb-3">Matrícula ${formatarBRL(matricula)} + ${parcelas}× ~${formatarBRL(mensalidade)} · sem bolsas/taxas.<br>Troque no seletor (mesmo horário) ou remova o que não quiser.</div>`;
 
-    s.slots.forEach((slot, idx) => {
+    if (!ativos.length) {
+        const vazio = document.createElement("div");
+        vazio.className = "rounded-xl border border-dashed border-slate-600 bg-slate-900/40 p-3 text-[12px] text-slate-400 mb-2";
+        vazio.textContent = "Nenhuma disciplina na grade. Restaure alguma abaixo ou recalcule o semestre.";
+        col.appendChild(vazio);
+    }
+
+    ativos.forEach((slot) => {
+        const idx = s.slots.indexOf(slot);
         const d = opcaoAtual(slot);
         const borda = d.optativa ? COR.optativa.bg : (d.destrava >= 3 ? COR.gargalo.bg : "transparent");
         const el = document.createElement("div");
         el.className = "rounded-xl border border-slate-700 bg-slate-900/70 p-2.5 mb-2";
+        el.id = `slot-sem-${idx}`;
         el.style.borderLeft = `4px solid ${borda}`;
         const tag = d.destrava >= 3
             ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full ml-1">gargalo</span>'
@@ -610,33 +718,70 @@ function renderSemestre() {
             seletorHtml = `
                 <div class="mt-2">
                     <label class="block text-[9px] uppercase tracking-wide text-emerald-400/80 font-semibold mb-1">
-                        Trocar (mesmo horário) — ${slot.opcoes.length} opções
+                        Escolher neste horário — ${slot.opcoes.length} opções
                     </label>
                     <select onchange="trocarAlternativa(${idx}, this.value)"
                             class="w-full text-[12px] rounded-lg bg-slate-800 border border-emerald-600/40 text-slate-100 px-2 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
                         ${options}
                     </select>
                 </div>`;
+        } else {
+            seletorHtml = `<p class="mt-2 text-[10px] text-slate-500 italic">Sem outra disciplina no mesmo horário.</p>`;
         }
 
         el.innerHTML = `
-            <div class="text-[13px] font-semibold leading-tight text-slate-100">${d.nome}${tag}</div>
-            <div class="text-[10px] text-slate-500 mt-0.5">${d.codigo} · ${textoChCobranca(d)}${d.semipresencial ? " · semipresencial" : ""} · <span class="text-emerald-400 font-semibold">~${formatarBRL(custoMensalDisciplina(d))}/mês</span></div>
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                    <div class="text-[13px] font-semibold leading-tight text-slate-100">${d.nome}${tag}</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">${d.codigo} · ${textoChCobranca(d)}${d.semipresencial ? " · semipresencial" : ""} · <span class="text-emerald-400 font-semibold">~${formatarBRL(custoMensalDisciplina(d))}/mês</span></div>
+                </div>
+                <button type="button" onclick="removerDisciplinaSemestre(${idx})"
+                        title="Remover desta grade"
+                        class="shrink-0 text-[11px] font-semibold text-rose-300 hover:text-rose-100 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg px-2 py-1 transition">
+                    Remover
+                </button>
+            </div>
             <div class="text-[11px] text-slate-400 mt-1.5">${d.motivo}</div>
             ${horarioHtml}
             ${seletorHtml}`;
         col.appendChild(el);
     });
+
+    if (removidos.length) {
+        const bloco = document.createElement("div");
+        bloco.className = "mt-3 pt-3 border-t border-slate-700";
+        bloco.innerHTML = `<h5 class="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">Removidas (${removidos.length})</h5>`;
+        removidos.forEach(({ sl, idx }) => {
+            const d = opcaoAtual(sl);
+            const item = document.createElement("div");
+            item.className = "rounded-lg border border-slate-700/80 bg-slate-900/40 px-2.5 py-2 mb-1.5 flex items-center justify-between gap-2 opacity-80";
+            item.innerHTML = `
+                <div class="min-w-0">
+                    <div class="text-[12px] text-slate-300 truncate">${d.nome}</div>
+                    <div class="text-[10px] text-slate-500">${d.codigo} · ${textoChCobranca(d)}</div>
+                </div>
+                <button type="button" onclick="restaurarDisciplinaSemestre(${idx})"
+                        class="shrink-0 text-[11px] font-semibold text-sky-300 hover:text-sky-100 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 rounded-lg px-2 py-1 transition">
+                    Restaurar
+                </button>`;
+            bloco.appendChild(item);
+        });
+        col.appendChild(bloco);
+    }
+
     periodos.appendChild(col);
 
     const avisosSemestre = (plano.avisos || []).slice();
-    const totalTrocaveis = s.slots.filter(sl => sl.opcoes.length > 1).length;
+    const totalTrocaveis = ativos.filter(sl => sl.opcoes.length > 1).length;
     if (totalTrocaveis > 0) {
-        avisosSemestre.unshift(`${totalTrocaveis} disciplina(s) têm alternativas no mesmo horário — use o seletor para trocar sem mexer na grade.`);
+        avisosSemestre.unshift(`${totalTrocaveis} horário(s) têm outras matérias possíveis — use o seletor "Escolher neste horário".`);
+    }
+    if (removidos.length > 0) {
+        avisosSemestre.unshift(`${removidos.length} disciplina(s) removida(s). Custo e grade já foram recalculados; use Restaurar se mudar de ideia.`);
     }
     renderAvisos(avisosSemestre);
 
-    renderGrade(atuais);
+    renderGrade(atuais, { interativo: true });
 
     const mapaPeriodoDoNo = {};
     atuais.forEach(o => { mapaPeriodoDoNo[o.codigo] = 0; });
@@ -661,55 +806,87 @@ function paraMin(hhmm) {
     return h * 60 + m;
 }
 
-function renderGrade(disciplinas) {
+function renderGrade(disciplinas, opts = {}) {
     const cont = document.getElementById("gradeSemanal");
+    const interativo = !!opts.interativo && estado.semestre;
     const comHorario = (disciplinas || []).filter(d => d.turma && d.horarios && d.horarios.length);
-    if (!comHorario.length) { cont.innerHTML = ""; return; }
+    if (!comHorario.length) {
+        cont.innerHTML = interativo
+            ? `<h4 class="font-bold text-base text-white mb-3">Grade do próximo semestre (1º período)</h4>
+               <p class="text-sm text-slate-500">Grade vazia — remova menos disciplinas ou restaure alguma.</p>`
+            : "";
+        return;
+    }
 
     const cor = {};
+    const slotPorCodigo = {};
+    if (interativo) {
+        slotsAtivos().forEach(sl => {
+            const d = opcaoAtual(sl);
+            if (d) slotPorCodigo[d.codigo] = estado.semestre.slots.indexOf(sl);
+        });
+    }
     comHorario.forEach((d, i) => { cor[d.codigo] = GRADE_CORES[i % GRADE_CORES.length]; });
 
     // ocupacao[dia][slot] = disciplina
     const ocup = {};
     comHorario.forEach(d => {
         d.horarios.forEach(h => {
+            const dia = (h.dia || "").toUpperCase();
             const ini = paraMin(h.inicio), fim = paraMin(h.fim);
             GRADE_SLOTS.forEach(s => {
                 const sm = paraMin(s);
                 if (sm >= ini && sm < fim) {
-                    (ocup[h.dia] = ocup[h.dia] || {})[s] = d;
+                    (ocup[dia] = ocup[dia] || {})[s] = d;
                 }
             });
         });
     });
 
-    let html = `<h4 class="font-bold text-base text-white mb-3">Grade do próximo semestre (1º período)</h4>
-        <div class="overflow-x-auto custom-scroll"><table class="w-full border-collapse text-sm table-fixed">
-        <thead><tr><th class="p-2 text-slate-500 font-medium w-20"></th>`;
-    GRADE_DIAS.forEach(([, lbl]) => {
-        html += `<th class="p-2 text-slate-300 font-semibold border-b border-slate-700 text-sm">${lbl}</th>`;
-    });
-    html += `</tr></thead><tbody>`;
+    const slotsVisiveis = GRADE_SLOTS.filter(s =>
+        GRADE_DIAS.some(([dia]) => ocup[dia] && ocup[dia][s]));
 
-    GRADE_SLOTS.forEach(s => {
-        const temAlgo = GRADE_DIAS.some(([dia]) => ocup[dia] && ocup[dia][s]);
-        if (!temAlgo) return; // esconde faixas totalmente vazias
-        html += `<tr class="h-16"><td class="p-2 text-right text-slate-500 pr-3 align-top text-xs font-medium">${s}</td>`;
+    let html = `<h4 class="font-bold text-base text-white mb-3">Grade do próximo semestre (1º período)</h4>
+        ${interativo ? `<p class="text-[11px] text-slate-500 mb-3">Clique em uma aula para destacar a disciplina na lista (trocar ou remover).</p>` : ""}
+        <div class="grade-semanal-wrap custom-scroll">
+        <div class="grade-semanal" style="--grade-rows:${slotsVisiveis.length}">`;
+
+    html += `<div class="grade-corner"></div>`;
+    GRADE_DIAS.forEach(([, lbl]) => {
+        html += `<div class="grade-day">${lbl}</div>`;
+    });
+
+    slotsVisiveis.forEach(s => {
+        html += `<div class="grade-time">${s}</div>`;
         GRADE_DIAS.forEach(([dia]) => {
             const d = ocup[dia] && ocup[dia][s];
             if (d) {
-                html += `<td class="p-1 border border-slate-800 align-top">
-                    <div class="rounded-lg px-2 py-1.5 text-white leading-snug h-full flex items-center text-xs font-medium"
-                         style="background:${cor[d.codigo]}dd"
-                         title="${d.nome} · Turma ${d.turma}">${d.nome}</div></td>`;
+                const idx = slotPorCodigo[d.codigo];
+                const clicavel = interativo && idx != null;
+                const attrs = clicavel
+                    ? `onclick="focarSlotSemestre(${idx})" role="button" tabindex="0"`
+                    : "";
+                html += `<div class="grade-cell${clicavel ? " grade-cell--click" : ""}">
+                    <div ${attrs} class="grade-aula"
+                         style="background:${cor[d.codigo]}"
+                         title="${d.nome} · Turma ${d.turma}${clicavel ? " · clique para editar" : ""}">${d.nome}</div>
+                </div>`;
             } else {
-                html += `<td class="border border-slate-800/60"></td>`;
+                html += `<div class="grade-cell grade-cell--empty"></div>`;
             }
         });
-        html += `</tr>`;
     });
-    html += `</tbody></table></div>`;
+
+    html += `</div></div>`;
     cont.innerHTML = html;
+}
+
+function focarSlotSemestre(slotIdx) {
+    const el = document.getElementById(`slot-sem-${slotIdx}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    el.classList.add("ring-2", "ring-emerald-400");
+    setTimeout(() => el.classList.remove("ring-2", "ring-emerald-400"), 1200);
 }
 
 /* ---------- Consultar disciplina ---------- */

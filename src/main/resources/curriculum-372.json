@@ -1,0 +1,83 @@
+{
+  "curso": "Engenharia de Software",
+  "codigoCurriculo": "372",
+  "rotulo": "4ª grade (SGA / vigente)",
+  "instituicao": "PUC Minas - Campus Lourdes",
+  "cargaHorariaTotal": 3796,
+  "situacao": "Vigente",
+  "fonte": "Oferta SGA 2026/2 (pgAln_PmTurmas.html). P1–P2 redesenhados; P3–P8 alinhados às obrigatórias da oferta. CH de P1–P2 do site PUC; demais da grade 37203. Pré-requisitos inferidos — confira no SGA.",
+  "custos": {
+    "semestre": "2026/2",
+    "matricula": 1892.00,
+    "valorHoraMensalPadrao": 3.4403333,
+    "parcelasMensais": 5,
+    "tarifasPorCodigo": {
+      "372009": 9.0949074
+    }
+  },
+  "disciplinas": [
+    { "codigo": "372001", "nome": "Computabilidade", "cargaHoraria": 72, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372002", "nome": "Desenvolvimento de Interfaces Web", "cargaHoraria": 54, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372003", "nome": "Filosofia: Lógica e Pensamento Crítico", "cargaHoraria": 36, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372004", "nome": "Fundamentos de Engenharia de Software", "cargaHoraria": 90, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372005", "nome": "Introdução à Algoritmos", "cargaHoraria": 144, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372006", "nome": "Introdução à Computação", "cargaHoraria": 72, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372007", "nome": "Trabalho Interdisciplinar: Desenvolvimento de Aplicações Web", "cargaHoraria": 68, "periodoSugerido": 1, "preRequisitos": [], "coRequisitos": ["372002", "372005"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+
+    { "codigo": "372008", "nome": "Arquitetura de Computadores", "cargaHoraria": 42, "periodoSugerido": 2, "preRequisitos": ["372006"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372009", "nome": "Cálculo I", "cargaHoraria": 108, "periodoSugerido": 2, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372010", "nome": "Desenvolvimento e Integração de Aplicações Web", "cargaHoraria": 72, "periodoSugerido": 2, "preRequisitos": ["372002"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372011", "nome": "Interação Humano-Computador", "cargaHoraria": 90, "periodoSugerido": 2, "preRequisitos": ["372004"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372012", "nome": "Introdução à Pesquisa em Informática", "cargaHoraria": 36, "periodoSugerido": 2, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372013", "nome": "Metodologias de Extensão Universitária", "cargaHoraria": 72, "periodoSugerido": 2, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372014", "nome": "Programação Modular", "cargaHoraria": 144, "periodoSugerido": 2, "preRequisitos": ["372005"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372015", "nome": "Trabalho Interdisciplinar: Desenvolvimento Centrado no Usuário", "cargaHoraria": 56, "periodoSugerido": 2, "preRequisitos": [], "coRequisitos": ["372011", "372014"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+
+    { "codigo": "372016", "nome": "Algoritmos e Estruturas de Dados II", "cargaHoraria": 120, "periodoSugerido": 3, "preRequisitos": ["372005"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372017", "nome": "Cultura Religiosa: Fenômeno Religioso", "cargaHoraria": 40, "periodoSugerido": 3, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372018", "nome": "Engenharia de Requisitos de Software", "cargaHoraria": 80, "periodoSugerido": 3, "preRequisitos": ["372004"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372019", "nome": "Sistemas Operacionais", "cargaHoraria": 80, "periodoSugerido": 3, "preRequisitos": ["372008"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372020", "nome": "Trabalho Interdisciplinar: Aplicações para Cenários Reais", "cargaHoraria": 45, "periodoSugerido": 3, "preRequisitos": [], "coRequisitos": ["372016", "372018"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+
+    { "codigo": "372021", "nome": "Laboratório de Desenvolvimento de Software", "cargaHoraria": 40, "periodoSugerido": 4, "preRequisitos": [], "coRequisitos": ["372022"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372022", "nome": "Projeto de Software", "cargaHoraria": 80, "periodoSugerido": 4, "preRequisitos": ["372014", "372018"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372023", "nome": "Redes de Computadores", "cargaHoraria": 80, "periodoSugerido": 4, "preRequisitos": ["372019"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372024", "nome": "Teoria dos Grafos e Computabilidade", "cargaHoraria": 120, "periodoSugerido": 4, "preRequisitos": ["372016"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": true },
+    { "codigo": "372025", "nome": "Trabalho Interdisciplinar: Aplicações para Sustentabilidade", "cargaHoraria": 50, "periodoSugerido": 4, "preRequisitos": [], "coRequisitos": ["372022"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372026", "nome": "Optativa I", "cargaHoraria": 80, "periodoSugerido": 4, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": true, "semipresencial": false },
+
+    { "codigo": "372027", "nome": "Arquitetura de Software", "cargaHoraria": 80, "periodoSugerido": 5, "preRequisitos": ["372022"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372028", "nome": "Cultura Religiosa: Pessoa e Sociedade", "cargaHoraria": 40, "periodoSugerido": 5, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372029", "nome": "Desenvolvimento de Aplicações Móveis e Distribuídas", "cargaHoraria": 80, "periodoSugerido": 5, "preRequisitos": ["372014", "372023"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372030", "nome": "Estatística e Probabilidade", "cargaHoraria": 80, "periodoSugerido": 5, "preRequisitos": ["372009"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": true },
+    { "codigo": "372031", "nome": "Fundamentos de Projeto e Análise de Algoritmos", "cargaHoraria": 40, "periodoSugerido": 5, "preRequisitos": ["372024"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372032", "nome": "Gerência de Projetos de Software", "cargaHoraria": 60, "periodoSugerido": 5, "preRequisitos": ["372018"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": true },
+    { "codigo": "372033", "nome": "Laboratório de Desenvolvimento de Aplicações Móveis e Distribuídas", "cargaHoraria": 40, "periodoSugerido": 5, "preRequisitos": [], "coRequisitos": ["372029"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372034", "nome": "Trabalho Interdisciplinar: Aplicações Distribuídas", "cargaHoraria": 45, "periodoSugerido": 5, "preRequisitos": [], "coRequisitos": ["372027"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372035", "nome": "Optativa II", "cargaHoraria": 80, "periodoSugerido": 5, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": true, "semipresencial": false },
+
+    { "codigo": "372036", "nome": "Engenharia Econômica para Software", "cargaHoraria": 80, "periodoSugerido": 6, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372037", "nome": "Gerência de Configuração e Evolução de Software", "cargaHoraria": 80, "periodoSugerido": 6, "preRequisitos": ["372022"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372038", "nome": "Laboratório de Experimentação de Software", "cargaHoraria": 40, "periodoSugerido": 6, "preRequisitos": [], "coRequisitos": ["372039"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372039", "nome": "Medição e Experimentação em Engenharia de Software", "cargaHoraria": 80, "periodoSugerido": 6, "preRequisitos": ["372030"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372040", "nome": "Teste de Software", "cargaHoraria": 80, "periodoSugerido": 6, "preRequisitos": ["372018"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372041", "nome": "Trabalho Interdisciplinar: Pesquisa em Engenharia de Software", "cargaHoraria": 45, "periodoSugerido": 6, "preRequisitos": [], "coRequisitos": ["372039"], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372042", "nome": "Optativa III", "cargaHoraria": 80, "periodoSugerido": 6, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": true, "semipresencial": false },
+
+    { "codigo": "372043", "nome": "Computadores e Sociedade", "cargaHoraria": 40, "periodoSugerido": 7, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372044", "nome": "Engenharia de Processos e Qualidade de Software", "cargaHoraria": 80, "periodoSugerido": 7, "preRequisitos": ["372018"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372045", "nome": "Filosofia: Antropologia e Ética", "cargaHoraria": 80, "periodoSugerido": 7, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372046", "nome": "Gestão da Produção de Software", "cargaHoraria": 40, "periodoSugerido": 7, "preRequisitos": ["372032"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372047", "nome": "Tecnologias da Informação e do Conhecimento", "cargaHoraria": 40, "periodoSugerido": 7, "preRequisitos": ["372010"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372048", "nome": "Tópicos em Computação I", "cargaHoraria": 40, "periodoSugerido": 7, "preRequisitos": ["372031"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372049", "nome": "Tópicos em Computação II", "cargaHoraria": 40, "periodoSugerido": 7, "preRequisitos": ["372031"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372050", "nome": "Trabalho de Conclusão de Curso I", "cargaHoraria": 60, "periodoSugerido": 7, "preRequisitos": ["372012"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+
+    { "codigo": "372051", "nome": "Modelagem e Avaliação de Desempenho", "cargaHoraria": 80, "periodoSugerido": 8, "preRequisitos": ["372024", "372030"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372052", "nome": "Segurança e Auditoria de Sistemas", "cargaHoraria": 60, "periodoSugerido": 8, "preRequisitos": ["372022", "372023"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": true },
+    { "codigo": "372053", "nome": "Tópicos em Engenharia de Software", "cargaHoraria": 40, "periodoSugerido": 8, "preRequisitos": ["372022"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372054", "nome": "Tópicos em Sistemas de Software", "cargaHoraria": 40, "periodoSugerido": 8, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 1800, "optativa": false, "semipresencial": false },
+    { "codigo": "372055", "nome": "Trabalho de Conclusão de Curso II", "cargaHoraria": 75, "periodoSugerido": 8, "preRequisitos": ["372050"], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": false, "semipresencial": false },
+    { "codigo": "372056", "nome": "Optativa IV", "cargaHoraria": 80, "periodoSugerido": 8, "preRequisitos": [], "coRequisitos": [], "cargaHorariaMinima": 0, "optativa": true, "semipresencial": false }
+  ]
+}

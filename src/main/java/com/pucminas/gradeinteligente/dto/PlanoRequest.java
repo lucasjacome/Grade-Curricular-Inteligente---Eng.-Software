@@ -16,7 +16,8 @@ public record PlanoRequest(
         List<String> concluidas,
         @Min(1) @Max(15) Integer maxDisciplinasPorPeriodo,
         Boolean incluirOptativas,
-        Boolean considerarHorarios
+        Boolean considerarHorarios,
+        String codigoCurriculo
 ) {
     public PlanoRequest {
         concluidas = concluidas == null ? List.of() : concluidas;

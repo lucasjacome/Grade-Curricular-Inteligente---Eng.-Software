@@ -10,9 +10,11 @@ import java.util.Map;
 public record Curriculo(
         String curso,
         String codigoCurriculo,
+        String rotulo,
         String instituicao,
         int cargaHorariaTotal,
         String situacao,
+        String fonte,
         Custos custos,
         List<Disciplina> disciplinas
 ) {

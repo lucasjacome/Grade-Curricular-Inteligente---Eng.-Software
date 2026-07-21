@@ -100,3 +100,77 @@
 #modalConteudo {
     will-change: opacity, transform;
 }
+
+/* Grade semanal do próximo semestre */
+.grade-semanal-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+.grade-semanal {
+    display: grid;
+    grid-template-columns: 52px repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    min-width: 640px;
+    box-sizing: border-box;
+}
+.grade-corner {
+    min-height: 28px;
+}
+.grade-day {
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    padding: 4px 2px 8px;
+    border-bottom: 1px solid #334155;
+}
+.grade-time {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 6px 6px 0 0;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #64748b;
+    line-height: 1.2;
+}
+.grade-cell {
+    min-width: 0;
+    min-height: 58px;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    background: #0f172a80;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+.grade-cell--empty {
+    background: transparent;
+    border-color: #1e293b66;
+}
+.grade-aula {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-height: 58px;
+    padding: 8px 9px;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.3;
+    word-break: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+.grade-cell--click {
+    cursor: pointer;
+}
+.grade-cell--click:hover {
+    outline: 2px solid rgba(255, 255, 255, 0.35);
+    outline-offset: 1px;
+}
+.grade-cell--click .grade-aula {
+    cursor: pointer;
+}

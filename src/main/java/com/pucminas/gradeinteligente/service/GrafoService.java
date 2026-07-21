@@ -2,6 +2,7 @@ package com.pucminas.gradeinteligente.service;
 
 import com.pucminas.gradeinteligente.domain.Curriculo;
 import com.pucminas.gradeinteligente.domain.Disciplina;
+import com.pucminas.gradeinteligente.dto.GrafoDTO;
 import com.pucminas.gradeinteligente.repository.CurriculoRepository;
 import jakarta.annotation.PostConstruct;
 import org.jgrapht.Graph;
@@ -21,25 +22,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Modela o currículo como um grafo acíclico dirigido (DAG) de pré-requisitos
- * (aresta pré -> disciplina) e expõe métricas de importância:
- *
- * <ul>
- *   <li><b>descendentes</b>: quantas disciplinas essa destrava (direta e indiretamente);</li>
- *   <li><b>profundidadeCadeia</b>: maior cadeia de dependências que parte dela (caminho crítico).</li>
- * </ul>
- *
- * A soma dessas métricas é usada como prioridade: gargalos primeiro.
+ * Modela cada currículo como um DAG de pré-requisitos e expõe métricas de gargalo.
  */
 @Service
 public class GrafoService {
 
     private final CurriculoRepository repository;
-
-    private Graph<String, DefaultEdge> grafoPreRequisitos;
-    private Map<String, Integer> descendentes;
-    private Map<String, Integer> profundidadeCadeia;
-    private List<String> ordemTopologica;
+    private final Map<String, AnaliseGrafo> porCurriculo = new HashMap<>();
 
     public GrafoService(CurriculoRepository repository) {
         this.repository = repository;
@@ -47,7 +36,13 @@ public class GrafoService {
 
     @PostConstruct
     void construir() {
-        Curriculo curriculo = repository.getCurriculo();
+        porCurriculo.clear();
+        for (Curriculo curriculo : repository.listar()) {
+            porCurriculo.put(curriculo.codigoCurriculo(), analisar(curriculo));
+        }
+    }
+
+    private AnaliseGrafo analisar(Curriculo curriculo) {
         Map<String, Disciplina> porCodigo = curriculo.indexadoPorCodigo();
 
         DirectedAcyclicGraph<String, DefaultEdge> grafo = new DirectedAcyclicGraph<>(DefaultEdge.class);
@@ -57,7 +52,7 @@ public class GrafoService {
         for (Disciplina d : curriculo.disciplinas()) {
             for (String pre : d.preRequisitos()) {
                 if (porCodigo.containsKey(pre)) {
-                    grafo.addEdge(pre, d.codigo()); // pré destrava a disciplina
+                    grafo.addEdge(pre, d.codigo());
                 }
             }
         }
@@ -65,13 +60,16 @@ public class GrafoService {
         CycleDetector<String, DefaultEdge> detector = new CycleDetector<>(grafo);
         if (detector.detectCycles()) {
             throw new IllegalStateException(
-                    "Ciclo de pré-requisitos detectado: " + detector.findCycles());
+                    "Ciclo de pré-requisitos no currículo " + curriculo.codigoCurriculo()
+                            + ": " + detector.findCycles());
         }
 
-        this.grafoPreRequisitos = grafo;
-        this.ordemTopologica = calcularOrdemTopologica(grafo);
-        this.descendentes = calcularDescendentes(grafo);
-        this.profundidadeCadeia = calcularProfundidade(grafo);
+        List<String> ordem = calcularOrdemTopologica(grafo);
+        return new AnaliseGrafo(
+                grafo,
+                ordem,
+                calcularDescendentes(grafo, ordem),
+                calcularProfundidade(grafo, ordem));
     }
 
     private List<String> calcularOrdemTopologica(Graph<String, DefaultEdge> grafo) {
@@ -80,9 +78,9 @@ public class GrafoService {
         return ordem;
     }
 
-    private Map<String, Integer> calcularDescendentes(Graph<String, DefaultEdge> grafo) {
+    private Map<String, Integer> calcularDescendentes(Graph<String, DefaultEdge> grafo, List<String> ordem) {
         Map<String, Set<String>> alcancaveis = new HashMap<>();
-        List<String> reversa = new ArrayList<>(ordemTopologica);
+        List<String> reversa = new ArrayList<>(ordem);
         java.util.Collections.reverse(reversa);
         for (String v : reversa) {
             Set<String> acc = new HashSet<>();
@@ -97,9 +95,9 @@ public class GrafoService {
         return resultado;
     }
 
-    private Map<String, Integer> calcularProfundidade(Graph<String, DefaultEdge> grafo) {
+    private Map<String, Integer> calcularProfundidade(Graph<String, DefaultEdge> grafo, List<String> ordem) {
         Map<String, Integer> prof = new HashMap<>();
-        List<String> reversa = new ArrayList<>(ordemTopologica);
+        List<String> reversa = new ArrayList<>(ordem);
         java.util.Collections.reverse(reversa);
         for (String v : reversa) {
             int max = 0;
@@ -111,63 +109,96 @@ public class GrafoService {
         return prof;
     }
 
-    /** Prioridade do gargalo: quanto maior, mais cedo deve ser cursada. */
+    private AnaliseGrafo analise(String codigoCurriculo) {
+        String chave = (codigoCurriculo == null || codigoCurriculo.isBlank())
+                ? repository.getCodigoPadrao()
+                : codigoCurriculo.trim();
+        AnaliseGrafo a = porCurriculo.get(chave);
+        if (a == null) {
+            throw new IllegalArgumentException("Grafo não disponível para currículo: " + chave);
+        }
+        return a;
+    }
+
     public int prioridade(String codigo) {
-        return descendentes.getOrDefault(codigo, 0) + profundidadeCadeia.getOrDefault(codigo, 0);
+        return prioridade(repository.getCodigoPadrao(), codigo);
+    }
+
+    public int prioridade(String codigoCurriculo, String codigo) {
+        AnaliseGrafo a = analise(codigoCurriculo);
+        return a.descendentes.getOrDefault(codigo, 0) + a.profundidadeCadeia.getOrDefault(codigo, 0);
     }
 
     public int getDescendentes(String codigo) {
-        return descendentes.getOrDefault(codigo, 0);
+        return getDescendentes(repository.getCodigoPadrao(), codigo);
+    }
+
+    public int getDescendentes(String codigoCurriculo, String codigo) {
+        return analise(codigoCurriculo).descendentes.getOrDefault(codigo, 0);
     }
 
     public int getProfundidadeCadeia(String codigo) {
-        return profundidadeCadeia.getOrDefault(codigo, 0);
+        return getProfundidadeCadeia(repository.getCodigoPadrao(), codigo);
     }
 
-    public List<String> getOrdemTopologica() {
-        return List.copyOf(ordemTopologica);
+    public int getProfundidadeCadeia(String codigoCurriculo, String codigo) {
+        return analise(codigoCurriculo).profundidadeCadeia.getOrDefault(codigo, 0);
     }
 
-    /** Monta a representação do grafo para o front-end (nós + arestas tipadas). */
-    public com.pucminas.gradeinteligente.dto.GrafoDTO montarVisualizacao() {
-        Curriculo curriculo = repository.getCurriculo();
+    public GrafoDTO montarVisualizacao() {
+        return montarVisualizacao(repository.getCodigoPadrao());
+    }
+
+    public GrafoDTO montarVisualizacao(String codigoCurriculo) {
+        Curriculo curriculo = repository.getCurriculo(codigoCurriculo);
         Map<String, Disciplina> porCodigo = curriculo.indexadoPorCodigo();
 
-        List<com.pucminas.gradeinteligente.dto.GrafoDTO.No> nos = new ArrayList<>();
-        List<com.pucminas.gradeinteligente.dto.GrafoDTO.Aresta> arestas = new ArrayList<>();
+        List<GrafoDTO.No> nos = new ArrayList<>();
+        List<GrafoDTO.Aresta> arestas = new ArrayList<>();
 
         for (Disciplina d : curriculo.disciplinas()) {
-            nos.add(new com.pucminas.gradeinteligente.dto.GrafoDTO.No(
+            nos.add(new GrafoDTO.No(
                     d.codigo(), d.nome(), d.cargaHoraria(), d.periodoSugerido(),
                     d.optativa(), d.semipresencial(),
-                    prioridade(d.codigo()), getDescendentes(d.codigo())));
+                    prioridade(codigoCurriculo, d.codigo()),
+                    getDescendentes(codigoCurriculo, d.codigo())));
 
             for (String pre : d.preRequisitos()) {
                 if (porCodigo.containsKey(pre)) {
-                    arestas.add(new com.pucminas.gradeinteligente.dto.GrafoDTO.Aresta(pre, d.codigo(), "PRE"));
+                    arestas.add(new GrafoDTO.Aresta(pre, d.codigo(), "PRE"));
                 }
             }
             for (String co : d.coRequisitos()) {
                 if (porCodigo.containsKey(co)) {
-                    arestas.add(new com.pucminas.gradeinteligente.dto.GrafoDTO.Aresta(co, d.codigo(), "CO"));
+                    arestas.add(new GrafoDTO.Aresta(co, d.codigo(), "CO"));
                 }
             }
         }
-        return new com.pucminas.gradeinteligente.dto.GrafoDTO(nos, arestas);
+        return new GrafoDTO(nos, arestas);
     }
 
-    /** Códigos alcançáveis (dependentes) a partir de uma disciplina. */
     public Set<String> dependentesDe(String codigo) {
+        return dependentesDe(repository.getCodigoPadrao(), codigo);
+    }
+
+    public Set<String> dependentesDe(String codigoCurriculo, String codigo) {
         Set<String> acc = new LinkedHashSet<>();
-        coletarDependentes(codigo, acc);
+        coletarDependentes(analise(codigoCurriculo).grafo, codigo, acc);
         return acc;
     }
 
-    private void coletarDependentes(String codigo, Set<String> acc) {
-        for (String suc : Graphs.successorListOf(grafoPreRequisitos, codigo)) {
+    private void coletarDependentes(Graph<String, DefaultEdge> grafo, String codigo, Set<String> acc) {
+        for (String suc : Graphs.successorListOf(grafo, codigo)) {
             if (acc.add(suc)) {
-                coletarDependentes(suc, acc);
+                coletarDependentes(grafo, suc, acc);
             }
         }
     }
+
+    private record AnaliseGrafo(
+            Graph<String, DefaultEdge> grafo,
+            List<String> ordemTopologica,
+            Map<String, Integer> descendentes,
+            Map<String, Integer> profundidadeCadeia
+    ) {}
 }

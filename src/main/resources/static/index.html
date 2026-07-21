@@ -17,7 +17,7 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="style.css?v=7"/>
+    <link rel="stylesheet" href="style.css?v=8"/>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
@@ -38,6 +38,13 @@
         </div>
 
         <div class="flex items-end gap-4 flex-wrap">
+            <label class="flex flex-col gap-1 text-[11px] font-medium text-slate-400">
+                Grade curricular
+                <select id="selCurriculo"
+                        class="min-w-[220px] rounded-lg px-3 py-2 text-sm bg-slate-800 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                    <option value="">Carregando…</option>
+                </select>
+            </label>
             <label class="flex flex-col gap-1 text-[11px] font-medium text-slate-400">
                 Máx. disciplinas/período
                 <input type="number" id="maxDisc" min="1" max="15" value="6"
@@ -167,6 +174,6 @@
     </div>
 </div>
 
-<script src="app.js?v=15"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

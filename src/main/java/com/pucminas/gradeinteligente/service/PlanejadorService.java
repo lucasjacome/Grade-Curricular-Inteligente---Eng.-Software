@@ -64,7 +64,8 @@ public class PlanejadorService {
     }
 
     public PlanoResponse planejar(PlanoRequest request) {
-        Curriculo curriculo = repository.getCurriculo();
+        String codigoCurriculo = request.codigoCurriculo();
+        Curriculo curriculo = repository.getCurriculo(codigoCurriculo);
         Map<String, Disciplina> porCodigo = curriculo.indexadoPorCodigo();
 
         Set<String> concluidas = new HashSet<>(request.concluidas());
@@ -178,7 +179,7 @@ public class PlanejadorService {
 
         long pesoSecundarioMax = 0;
         for (Disciplina d : pendentes) {
-            pesoSecundarioMax += (long) grafoService.prioridade(d.codigo()) * horizonte;
+            pesoSecundarioMax += (long) grafoService.prioridade(codigoCurriculo, d.codigo()) * horizonte;
         }
         // Lexicográfico: 1) menos períodos; 2) mais disciplinas no 1º período; 3) gargalos mais cedo.
         long pesoContagemT1 = pesoSecundarioMax + maxDisciplinas + 1;
@@ -188,7 +189,7 @@ public class PlanejadorService {
         objetivo.addTerm(makespan, pesoPrimario);
         objetivo.addTerm(qtdPrimeiroPeriodo, -pesoContagemT1);
         for (Disciplina d : pendentes) {
-            objetivo.addTerm(termo.get(d.codigo()), grafoService.prioridade(d.codigo()));
+            objetivo.addTerm(termo.get(d.codigo()), grafoService.prioridade(codigoCurriculo, d.codigo()));
         }
         model.minimize(objetivo);
 
@@ -209,7 +210,7 @@ public class PlanejadorService {
         }
 
         Map<String, Turma> turmaEscolhida = extrairTurmasEscolhidas(solver, termo, turmasDaDisc, selecaoTurma);
-        return montarResposta(solver, termo, pendentes, chRestante, otimo, avisos, turmaEscolhida);
+        return montarResposta(solver, termo, pendentes, chRestante, otimo, avisos, turmaEscolhida, codigoCurriculo);
     }
 
     /**
@@ -223,7 +224,8 @@ public class PlanejadorService {
      * semestre — só temos como garantir a grade do próximo semestre.
      */
     public PlanoResponse planejarProximoSemestre(PlanoRequest request) {
-        Curriculo curriculo = repository.getCurriculo();
+        String codigoCurriculo = request.codigoCurriculo();
+        Curriculo curriculo = repository.getCurriculo(codigoCurriculo);
         Map<String, Disciplina> porCodigo = curriculo.indexadoPorCodigo();
 
         Set<String> concluidas = new HashSet<>(request.concluidas());
@@ -364,12 +366,12 @@ public class PlanejadorService {
 
         // Objetivo: 1) maximizar quantidade de disciplinas; 2) priorizar gargalos.
         long somaPrioridades = 0;
-        for (Disciplina d : elegiveis) somaPrioridades += grafoService.prioridade(d.codigo());
+        for (Disciplina d : elegiveis) somaPrioridades += grafoService.prioridade(codigoCurriculo, d.codigo());
         long pesoPorDisciplina = somaPrioridades + 1;
 
         LinearExprBuilder objetivo = LinearExpr.newBuilder();
         for (Disciplina d : elegiveis) {
-            objetivo.addTerm(cursar.get(d.codigo()), pesoPorDisciplina + grafoService.prioridade(d.codigo()));
+            objetivo.addTerm(cursar.get(d.codigo()), pesoPorDisciplina + grafoService.prioridade(codigoCurriculo, d.codigo()));
             Literal[] sel = selecaoTurma.get(d.codigo());
             if (sel != null) {
                 List<Turma> turmas = turmasDaDisc.get(d.codigo());
@@ -394,7 +396,7 @@ public class PlanejadorService {
         for (Disciplina d : elegiveis) {
             if (solver.booleanValue(cursar.get(d.codigo()))) escolhidas.add(d);
         }
-        escolhidas.sort(Comparator.comparingInt((Disciplina d) -> grafoService.prioridade(d.codigo())).reversed());
+        escolhidas.sort(Comparator.comparingInt((Disciplina d) -> grafoService.prioridade(codigoCurriculo, d.codigo())).reversed());
 
         Map<String, Turma> turmaEscolhida = new HashMap<>();
         for (Disciplina d : escolhidas) {
@@ -428,12 +430,12 @@ public class PlanejadorService {
             List<AlternativaDTO> alternativas = travadasPorCoreq.contains(d.codigo())
                     ? List.of()
                     : alternativasMesmoHorario(d, turma, elegiveis, codigosEscolhidos,
-                            turmasDaDisc, porCodigo, concluidas);
+                            turmasDaDisc, porCodigo, concluidas, codigoCurriculo);
             dtos.add(new DisciplinaPlanejadaDTO(
                     d.codigo(), d.nome(), d.cargaHoraria(), d.optativa(), d.semipresencial(),
-                    grafoService.prioridade(d.codigo()),
-                    grafoService.getDescendentes(d.codigo()),
-                    montarMotivo(d),
+                    grafoService.prioridade(codigoCurriculo, d.codigo()),
+                    grafoService.getDescendentes(codigoCurriculo, d.codigo()),
+                    montarMotivo(d, codigoCurriculo),
                     turma != null ? turma.codigo() : null,
                     turma != null ? turma.horarios() : null,
                     alternativas));
@@ -462,7 +464,8 @@ public class PlanejadorService {
                                                           Set<String> escolhidas,
                                                           Map<String, List<Turma>> turmasDaDisc,
                                                           Map<String, Disciplina> porCodigo,
-                                                          Set<String> concluidas) {
+                                                          Set<String> concluidas,
+                                                          String codigoCurriculo) {
         if (turmaAlvo == null || turmaAlvo.horarios().isEmpty()) return List.of();
         Set<String> assinaturaAlvo = assinaturaHorario(turmaAlvo);
 
@@ -482,8 +485,8 @@ public class PlanejadorService {
                 if (assinaturaHorario(t).equals(assinaturaAlvo)) {
                     alternativas.add(new AlternativaDTO(
                             e.codigo(), e.nome(), e.cargaHoraria(), e.optativa(), e.semipresencial(),
-                            grafoService.prioridade(e.codigo()),
-                            grafoService.getDescendentes(e.codigo()),
+                            grafoService.prioridade(codigoCurriculo, e.codigo()),
+                            grafoService.getDescendentes(codigoCurriculo, e.codigo()),
                             t.codigo(), t.horarios()));
                     break;
                 }
@@ -616,7 +619,8 @@ public class PlanejadorService {
     private PlanoResponse montarResposta(CpSolver solver, Map<String, IntVar> termo,
                                          List<Disciplina> pendentes, int chRestante,
                                          boolean otimo, List<String> avisos,
-                                         Map<String, Turma> turmaEscolhida) {
+                                         Map<String, Turma> turmaEscolhida,
+                                         String codigoCurriculo) {
         Map<Integer, List<Disciplina>> porPeriodo = new TreeMap<>();
         for (Disciplina d : pendentes) {
             int t = (int) solver.value(termo.get(d.codigo()));
@@ -628,7 +632,7 @@ public class PlanejadorService {
         for (Map.Entry<Integer, List<Disciplina>> entry : porPeriodo.entrySet()) {
             numeroSequencial++;
             List<Disciplina> lista = entry.getValue();
-            lista.sort(Comparator.comparingInt((Disciplina d) -> grafoService.prioridade(d.codigo()))
+            lista.sort(Comparator.comparingInt((Disciplina d) -> grafoService.prioridade(codigoCurriculo, d.codigo()))
                     .reversed());
 
             List<DisciplinaPlanejadaDTO> dtos = new ArrayList<>();
@@ -638,9 +642,9 @@ public class PlanejadorService {
                 Turma turma = turmaEscolhida.get(d.codigo());
                 dtos.add(new DisciplinaPlanejadaDTO(
                         d.codigo(), d.nome(), d.cargaHoraria(), d.optativa(), d.semipresencial(),
-                        grafoService.prioridade(d.codigo()),
-                        grafoService.getDescendentes(d.codigo()),
-                        montarMotivo(d),
+                        grafoService.prioridade(codigoCurriculo, d.codigo()),
+                        grafoService.getDescendentes(codigoCurriculo, d.codigo()),
+                        montarMotivo(d, codigoCurriculo),
                         turma != null ? turma.codigo() : null,
                         turma != null ? turma.horarios() : null,
                         List.of()));
@@ -652,9 +656,9 @@ public class PlanejadorService {
                 periodos, avisos);
     }
 
-    private String montarMotivo(Disciplina d) {
-        int destrava = grafoService.getDescendentes(d.codigo());
-        int profundidade = grafoService.getProfundidadeCadeia(d.codigo());
+    private String montarMotivo(Disciplina d, String codigoCurriculo) {
+        int destrava = grafoService.getDescendentes(codigoCurriculo, d.codigo());
+        int profundidade = grafoService.getProfundidadeCadeia(codigoCurriculo, d.codigo());
         if (d.optativa()) {
             return "Optativa (sem pré-requisito) — encaixada para completar carga horária.";
         }
