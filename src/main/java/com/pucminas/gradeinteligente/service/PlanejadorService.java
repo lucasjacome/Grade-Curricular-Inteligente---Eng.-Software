@@ -229,11 +229,24 @@ public class PlanejadorService {
         Map<String, Disciplina> porCodigo = curriculo.indexadoPorCodigo();
 
         Set<String> concluidas = new HashSet<>(request.concluidas());
+        Set<String> excluidas = new HashSet<>(request.excluidas());
         List<String> avisos = new ArrayList<>();
         for (String c : concluidas) {
             if (!porCodigo.containsKey(c)) {
                 avisos.add("Código concluído não reconhecido e ignorado: " + c);
             }
+        }
+        List<String> excluidasValidas = new ArrayList<>();
+        for (String c : excluidas) {
+            Disciplina d = porCodigo.get(c);
+            if (d == null) {
+                avisos.add("Código excluído não reconhecido e ignorado: " + c);
+            } else {
+                excluidasValidas.add(d.nome());
+            }
+        }
+        if (!excluidasValidas.isEmpty()) {
+            avisos.add("Filtro do usuário — não incluir: " + String.join("; ", excluidasValidas));
         }
 
         int maxDisciplinas = request.maxDisciplinasOrDefault();
@@ -257,6 +270,7 @@ public class PlanejadorService {
         List<Disciplina> elegiveis = new ArrayList<>();
         for (Disciplina d : curriculo.disciplinas()) {
             if (concluidas.contains(d.codigo())) continue;
+            if (excluidas.contains(d.codigo())) continue;
             if (d.optativa() && !incluirOptativas) continue;
 
             boolean preOk = true;

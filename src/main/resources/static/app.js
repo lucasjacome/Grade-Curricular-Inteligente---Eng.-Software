@@ -1,5 +1,6 @@
 const API = "";
 const STORAGE_KEY_PREFIX = "gci.concluidas.v1.";
+const STORAGE_EXCLUIR_PREFIX = "gci.excluidas.v1.";
 const STORAGE_CURRICULO = "gci.curriculo.codigo";
 
 function formatarBRL(v) {
@@ -60,6 +61,7 @@ const estado = {
     codigoCurriculo: localStorage.getItem(STORAGE_CURRICULO) || "37203",
     grafo: null,
     concluidas: new Set(),
+    excluidas: new Set(),
     cy: null,
     cardByCode: {},
     ultimoPlano: null,
@@ -105,6 +107,7 @@ async function carregarCurriculoAtivo() {
     const codigo = estado.codigoCurriculo;
     localStorage.setItem(STORAGE_CURRICULO, codigo);
     carregarConcluidas();
+    carregarExcluidas();
 
     const [curriculo, grafo] = await Promise.all([
         fetch(`${API}/api/curriculo?codigo=${encodeURIComponent(codigo)}`).then(r => r.json()),
@@ -129,6 +132,7 @@ async function carregarCurriculoAtivo() {
     renderChecklist();
     renderGrafo();
     renderConsulta();
+    renderPainelExcluir();
     atualizarProgresso();
 }
 
@@ -147,6 +151,25 @@ function ligarEventos() {
     document.getElementById("busca").addEventListener("input", filtrarBusca);
     document.getElementById("buscaConsulta").addEventListener("input", filtrarConsulta);
     document.getElementById("selCurriculo").addEventListener("change", e => trocarCurriculo(e.target.value));
+    document.getElementById("btnFiltroExcluir").addEventListener("click", e => {
+        e.stopPropagation();
+        document.getElementById("painelExcluir").classList.toggle("hidden");
+        renderPainelExcluir();
+    });
+    document.getElementById("painelExcluir").addEventListener("click", e => e.stopPropagation());
+    document.getElementById("buscaExcluir").addEventListener("input", renderPainelExcluir);
+    document.getElementById("btnLimparExcluidas").addEventListener("click", e => {
+        e.stopPropagation();
+        estado.excluidas.clear();
+        salvarExcluidas();
+        renderPainelExcluir();
+    });
+    document.addEventListener("click", () => {
+        const painel = document.getElementById("painelExcluir");
+        if (painel && !painel.classList.contains("hidden")) {
+            painel.classList.add("hidden");
+        }
+    });
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => trocarTab(btn.dataset.tab));
     });
@@ -162,6 +185,10 @@ function storageKeyConcluidas() {
     return STORAGE_KEY_PREFIX + (estado.codigoCurriculo || "37203");
 }
 
+function storageKeyExcluidas() {
+    return STORAGE_EXCLUIR_PREFIX + (estado.codigoCurriculo || "37203");
+}
+
 function carregarConcluidas() {
     try {
         let raw = localStorage.getItem(storageKeyConcluidas());
@@ -175,12 +202,102 @@ function carregarConcluidas() {
     }
 }
 
+function carregarExcluidas() {
+    try {
+        const raw = localStorage.getItem(storageKeyExcluidas());
+        const lista = raw ? JSON.parse(raw).map(String) : [];
+        // Mantém só códigos que existem no currículo atual (depois que ele carregar, refiltra).
+        estado.excluidas = new Set(lista);
+    } catch {
+        estado.excluidas = new Set();
+    }
+}
+
 function estaConcluida(codigo) {
     return estado.concluidas.has(String(codigo));
 }
 
 function salvarConcluidas() {
     localStorage.setItem(storageKeyConcluidas(), JSON.stringify([...estado.concluidas]));
+}
+
+function salvarExcluidas() {
+    localStorage.setItem(storageKeyExcluidas(), JSON.stringify([...estado.excluidas]));
+}
+
+function adicionarExclusao(codigo) {
+    codigo = String(codigo);
+    if (!codigo || estaConcluida(codigo)) return;
+    estado.excluidas.add(codigo);
+    salvarExcluidas();
+    renderPainelExcluir();
+}
+
+function removerExclusao(codigo) {
+    estado.excluidas.delete(String(codigo));
+    salvarExcluidas();
+    renderPainelExcluir();
+}
+
+function renderPainelExcluir() {
+    if (!estado.curriculo) return;
+
+    // Remove códigos que não existem mais / já concluídos
+    for (const c of [...estado.excluidas]) {
+        const d = disciplinaDe(c);
+        if (!d || estaConcluida(c)) estado.excluidas.delete(c);
+    }
+    salvarExcluidas();
+
+    const badge = document.getElementById("badgeExcluidas");
+    const n = estado.excluidas.size;
+    if (n > 0) {
+        badge.textContent = String(n);
+        badge.classList.remove("hidden");
+    } else {
+        badge.classList.add("hidden");
+    }
+
+    const termo = (document.getElementById("buscaExcluir")?.value || "").trim().toLowerCase();
+    const lista = document.getElementById("listaExcluirCandidatas");
+    lista.innerHTML = "";
+
+    const candidatas = estado.curriculo.disciplinas
+        .filter(d => !estaConcluida(d.codigo) && !estado.excluidas.has(d.codigo))
+        .filter(d => !termo || (d.nome + " " + d.codigo).toLowerCase().includes(termo))
+        .slice(0, 40);
+
+    if (!candidatas.length) {
+        lista.innerHTML = `<p class="text-[12px] text-slate-500 px-2 py-3">Nenhuma disciplina disponível para excluir.</p>`;
+    } else {
+        candidatas.forEach(d => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "w-full text-left rounded-lg px-2.5 py-2 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition";
+            btn.innerHTML = `
+                <div class="text-[12px] font-medium text-slate-200 leading-tight">${d.nome}</div>
+                <div class="text-[10px] text-slate-500 mt-0.5">${d.codigo} · ${d.periodoSugerido}º · ${d.cargaHoraria}h</div>`;
+            btn.addEventListener("click", () => adicionarExclusao(d.codigo));
+            lista.appendChild(btn);
+        });
+    }
+
+    const chips = document.getElementById("chipsExcluidas");
+    chips.innerHTML = "";
+    if (!estado.excluidas.size) {
+        chips.innerHTML = `<span class="text-[11px] text-slate-500 italic">Nenhuma matéria filtrada.</span>`;
+        return;
+    }
+    [...estado.excluidas].forEach(codigo => {
+        const d = disciplinaDe(codigo);
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.title = "Remover do filtro";
+        chip.className = "inline-flex items-center gap-1 max-w-full text-[11px] font-medium text-rose-200 bg-rose-500/15 border border-rose-500/30 rounded-full pl-2.5 pr-1.5 py-1 hover:bg-rose-500/25 transition";
+        chip.innerHTML = `<span class="truncate">${d?.nome || codigo}</span><span class="shrink-0 text-rose-300/80">✕</span>`;
+        chip.addEventListener("click", () => removerExclusao(codigo));
+        chips.appendChild(chip);
+    });
 }
 
 /* ---------- Abas ---------- */
@@ -263,6 +380,7 @@ function toggleConcluida(codigo) {
     pintarGrafoBase();
     atualizarProgresso();
     atualizarConsulta();
+    renderPainelExcluir();
 }
 
 function atualizarProgresso() {
@@ -279,6 +397,7 @@ function limpar() {
     pintarGrafoBase();
     atualizarProgresso();
     atualizarConsulta();
+    renderPainelExcluir();
 }
 
 /* ---------- Grafo ---------- */
@@ -477,6 +596,7 @@ async function calcularProximoSemestre() {
     try {
         const body = {
             concluidas: [...estado.concluidas],
+            excluidas: [...estado.excluidas],
             maxDisciplinasPorPeriodo: Number(document.getElementById("maxDisc").value),
             incluirOptativas: document.getElementById("incluirOptativas").checked,
             considerarHorarios: true,

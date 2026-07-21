@@ -54,6 +54,28 @@
                 <input type="checkbox" id="incluirOptativas" checked class="w-4 h-4 rounded accent-indigo-500"/>
                 Incluir optativas
             </label>
+            <div class="relative pb-0.5">
+                <button type="button" id="btnFiltroExcluir"
+                        class="bg-slate-800 hover:bg-slate-700 border border-slate-600 transition-colors px-4 py-2.5 rounded-xl font-semibold text-sm text-slate-200">
+                    Filtrar matérias
+                    <span id="badgeExcluidas" class="hidden ml-1.5 text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <div id="painelExcluir" class="hidden absolute right-0 top-full mt-2 z-40 w-80 max-h-96 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/50 flex flex-col">
+                    <div class="p-3 border-b border-slate-800">
+                        <div class="text-sm font-bold text-white">Não incluir no próximo semestre</div>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Adicione matérias que o calculador deve ignorar.</p>
+                        <input id="buscaExcluir" type="text" placeholder="Buscar disciplina…"
+                               class="mt-2 w-full text-sm rounded-lg bg-slate-800 border border-slate-700 text-slate-100 px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-slate-500"/>
+                    </div>
+                    <div id="listaExcluirCandidatas" class="flex-1 overflow-y-auto p-2 space-y-1 custom-scroll max-h-48"></div>
+                    <div class="p-3 border-t border-slate-800">
+                        <div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-1.5">Excluídas agora</div>
+                        <div id="chipsExcluidas" class="flex flex-wrap gap-1.5 min-h-[28px]"></div>
+                        <button type="button" id="btnLimparExcluidas"
+                                class="mt-2 text-[11px] text-rose-400 hover:text-rose-300 font-medium">Limpar filtro</button>
+                    </div>
+                </div>
+            </div>
             <button id="btnProximoSemestre"
                     class="bg-emerald-600 hover:bg-emerald-500 transition-colors px-5 py-2.5 rounded-xl font-semibold text-sm text-white shadow-lg shadow-emerald-950/50 disabled:opacity-60 disabled:cursor-wait">
                 Calcular próximo semestre
@@ -174,6 +196,6 @@
     </div>
 </div>
 
-<script src="app.js?v=18"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

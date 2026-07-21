@@ -11,16 +11,21 @@ import java.util.List;
  * @param concluidas               códigos das disciplinas já aprovadas
  * @param maxDisciplinasPorPeriodo teto de disciplinas por período (capacidade)
  * @param incluirOptativas         se as optativas genéricas entram no plano
+ * @param considerarHorarios       se a oferta/horários entram no modelo
+ * @param codigoCurriculo          código da grade (37203 / 372)
+ * @param excluidas                códigos a ignorar no próximo semestre (filtro do usuário)
  */
 public record PlanoRequest(
         List<String> concluidas,
         @Min(1) @Max(15) Integer maxDisciplinasPorPeriodo,
         Boolean incluirOptativas,
         Boolean considerarHorarios,
-        String codigoCurriculo
+        String codigoCurriculo,
+        List<String> excluidas
 ) {
     public PlanoRequest {
         concluidas = concluidas == null ? List.of() : concluidas;
+        excluidas = excluidas == null ? List.of() : excluidas;
     }
 
     public int maxDisciplinasOrDefault() {
