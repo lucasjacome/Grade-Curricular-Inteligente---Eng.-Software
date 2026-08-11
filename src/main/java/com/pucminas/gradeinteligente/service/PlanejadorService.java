@@ -38,15 +38,17 @@ import java.util.TreeMap;
  * <ul>
  *   <li>Variável inteira {@code termo[c]} ∈ [1, T] = período em que a disciplina c será cursada.</li>
  *   <li>Pré-requisito p de c ⇒ {@code termo[p] < termo[c]} (ou p já concluída = termo 0).</li>
- *   <li>Co-requisito x de c ⇒ {@code termo[x] <= termo[c]} (mesmo período ou antes).</li>
+ *   <li>Co-requisito x de c ⇒ mesmo período (os dois pendentes entram juntos,
+ *       como na matrícula real). Se x já foi concluído, a restrição some.</li>
  *   <li>Capacidade: em cada período, no máximo {@code maxDisciplinas} disciplinas.</li>
  *   <li>Orçamento mensal (opcional): em cada período, a soma das mensalidades estimadas
  *       das disciplinas não pode ultrapassar o teto informado.</li>
  *   <li>Carga horária mínima (ex.: 1.800h): só libera após acumular a CH exigida.</li>
- *   <li>Turmas/horários: para o 1º período (próximo semestre), o solver escolhe uma turma
- *       de cada disciplina de forma que não haja choque de horário.</li>
- *   <li>Objetivo lexicográfico: minimizar o número de períodos e, como desempate,
- *       antecipar os gargalos (maior prioridade no grafo).</li>
+ *   <li>Turmas/horários: só o 1º período (próximo semestre) precisa caber na oferta
+ *       sem choque — senão a matéria vai para o período seguinte. Os demais períodos
+ *       não usam a oferta atual.</li>
+ *   <li>Objetivo lexicográfico: 1) minimizar o número de períodos; 2) antecipar
+ *       todas as disciplinas (peso extra nos gargalos).</li>
  * </ul>
  */
 @Service
@@ -72,12 +74,15 @@ public class PlanejadorService {
         Map<String, Disciplina> porCodigo = curriculo.indexadoPorCodigo();
 
         Set<String> concluidas = new HashSet<>(request.concluidas());
+        Set<String> excluidas = new HashSet<>(request.excluidas());
         List<String> avisos = new ArrayList<>();
         for (String c : concluidas) {
             if (!porCodigo.containsKey(c)) {
                 avisos.add("Código concluído não reconhecido e ignorado: " + c);
             }
         }
+        registrarExcluidas(excluidas, porCodigo, avisos);
+        Set<String> bloqueadas = expandirExcluidas(excluidas, curriculo.disciplinas(), concluidas, porCodigo, avisos);
 
         int maxDisciplinas = request.maxDisciplinasOrDefault();
         boolean incluirOptativas = request.incluirOptativasOrDefault();
@@ -88,17 +93,24 @@ public class PlanejadorService {
                 .sum();
 
         List<Disciplina> pendentes = new ArrayList<>();
+        int totalRestantes = 0;
+        int chRestante = 0;
         for (Disciplina d : curriculo.disciplinas()) {
             if (concluidas.contains(d.codigo())) continue;
             if (d.optativa() && !incluirOptativas) continue;
+            totalRestantes++;
+            chRestante += d.cargaHoraria();
+            if (bloqueadas.contains(d.codigo())) continue;
             pendentes.add(d);
         }
 
-        int chRestante = pendentes.stream().mapToInt(Disciplina::cargaHoraria).sum();
-
-        if (pendentes.isEmpty()) {
+        if (totalRestantes == 0) {
             return new PlanoResponse("FORMADO", 0, 0, 0, true, List.of(),
                     List.of("Todas as disciplinas já foram concluídas. Parabéns!"));
+        }
+        if (pendentes.isEmpty()) {
+            avisos.add("Nada a planejar: o filtro removeu todas as disciplinas restantes.");
+            return new PlanoResponse("OK", 0, totalRestantes, chRestante, true, List.of(), avisos);
         }
 
         int horizonte = pendentes.size();
@@ -114,20 +126,18 @@ public class PlanejadorService {
 
             for (String pre : d.preRequisitos()) {
                 if (concluidas.contains(pre)) continue;
+                if (!porCodigo.containsKey(pre)) continue;
                 IntVar tp = termo.get(pre);
-                if (tp == null) {
-                    avisos.add("Pré-requisito " + pre + " de " + d.codigo()
-                            + " não está no plano; considerado pendente externo.");
-                    continue;
-                }
+                if (tp == null) continue; // filtrada na expansão do bloqueio
                 model.addLessOrEqual(tp, LinearExpr.affine(tc, 1, -1));
             }
 
             for (String co : d.coRequisitos()) {
                 if (concluidas.contains(co)) continue;
+                if (!porCodigo.containsKey(co)) continue;
                 IntVar tco = termo.get(co);
                 if (tco == null) continue;
-                model.addLessOrEqual(tco, tc);
+                model.addEquality(tco, tc);
             }
 
             if (d.cargaHorariaMinima() > 0) {
@@ -138,18 +148,7 @@ public class PlanejadorService {
         aplicarCapacidade(model, termo, horizonte, maxDisciplinas);
         aplicarOrcamentoMensal(model, termo, horizonte, pendentes, curriculo.custos(), request, avisos);
 
-        // Contagem de disciplinas no 1º período (empate após minimizar o makespan).
-        List<Literal> noPrimeiroPeriodo = new ArrayList<>();
-        for (Disciplina d : pendentes) {
-            Literal emT1 = model.newBoolVar("countT1_" + d.codigo());
-            model.addEquality(termo.get(d.codigo()), 1).onlyEnforceIf(emT1);
-            model.addDifferent(termo.get(d.codigo()), 1).onlyEnforceIf(emT1.not());
-            noPrimeiroPeriodo.add(emT1);
-        }
-        IntVar qtdPrimeiroPeriodo = model.newIntVar(0, maxDisciplinas, "qtd_t1");
-        model.addEquality(qtdPrimeiroPeriodo, LinearExpr.sum(noPrimeiroPeriodo.toArray(new Literal[0])));
-
-        // Turmas/horários: escolha de turma sem conflito no 1º período (próximo semestre).
+        // Horários só no 1º período: o conjunto do próximo semestre tem que caber na oferta.
         Map<String, List<Turma>> turmasDaDisc = new LinkedHashMap<>();
         Map<String, Literal[]> selecaoTurma = new HashMap<>();
         if (request.considerarHorariosOrDefault() && ofertaRepository.disponivel()) {
@@ -157,7 +156,12 @@ public class PlanejadorService {
             for (Disciplina d : pendentes) {
                 OfertaRepository.Casamento m = ofertaRepository.casar(d.nome());
                 if (m == null || m.turmas().isEmpty()) continue;
-                turmasDaDisc.put(d.codigo(), m.turmas());
+                List<Turma> comHorario = new ArrayList<>();
+                for (Turma t : m.turmas()) {
+                    if (t.horarios() != null && !t.horarios().isEmpty()) comHorario.add(t);
+                }
+                if (comHorario.isEmpty()) continue;
+                turmasDaDisc.put(d.codigo(), comHorario);
                 if (!m.exato()) {
                     aproximados.add(String.format("%s ≈ \"%s\" (%.0f%%)",
                             d.nome(), m.nomeOferta(), m.score() * 100));
@@ -166,34 +170,43 @@ public class PlanejadorService {
             if (!aproximados.isEmpty()) {
                 avisos.add("Casamento aproximado de nome (confira): " + String.join("; ", aproximados));
             }
-            if (turmasDaDisc.isEmpty()) {
-                avisos.add("Nenhuma disciplina pendente casou com a oferta de turmas do semestre.");
-            } else {
+            if (!turmasDaDisc.isEmpty()) {
                 Map<String, Literal> emPrimeiroPeriodo = new HashMap<>();
                 selecaoTurma = criarSelecaoDeTurmas(model, termo, turmasDaDisc, emPrimeiroPeriodo);
                 int pares = aplicarConflitoPrimeiroPeriodo(model, turmasDaDisc, selecaoTurma, emPrimeiroPeriodo);
-                avisos.add(String.format("Oferta %s: %d disciplinas com turmas; %d par(es) de choque tratados no 1º período.",
+                avisos.add(String.format(
+                        "Oferta %s: o 1º período respeita choque de horário (%d disciplinas com turma, %d par(es) de choque).",
                         ofertaRepository.semestre(), turmasDaDisc.size(), pares));
             }
         }
 
-        // Objetivo lexicográfico: 1) menos períodos; 2) gargalos mais cedo.
+        // 1) menos períodos; 2) cada disciplina o mais cedo possível (gargalos pesam mais).
         IntVar makespan = model.newIntVar(1, horizonte, "makespan");
         model.addMaxEquality(makespan, termo.values().toArray(new IntVar[0]));
 
-        long pesoSecundarioMax = 0;
+        // Peso: gargalo manda; empate vai para quem a grade oficial pede mais cedo.
+        // Sem isso, TI/lab/humanas (prioridade 0) empatam e o solver joga umas no 9º período.
+        int maxSugerido = 1;
         for (Disciplina d : pendentes) {
-            pesoSecundarioMax += (long) grafoService.prioridade(codigoCurriculo, d.codigo()) * horizonte;
+            maxSugerido = Math.max(maxSugerido, d.periodoSugerido());
         }
-        // Lexicográfico: 1) menos períodos; 2) mais disciplinas no 1º período; 3) gargalos mais cedo.
-        long pesoContagemT1 = pesoSecundarioMax + maxDisciplinas + 1;
-        long pesoPrimario = pesoContagemT1 * (maxDisciplinas + 1L) + horizonte + 1;
+        final int faixaSugerida = maxSugerido + 1;
+        final int pesoBase = 8;
+        long somaPesos = 0;
+        Map<String, Integer> pesoCurso = new HashMap<>();
+        for (Disciplina d : pendentes) {
+            int pri = grafoService.prioridade(codigoCurriculo, d.codigo());
+            int cedoNaGrade = faixaSugerida - Math.max(1, d.periodoSugerido());
+            int w = (pesoBase + pri) * faixaSugerida + cedoNaGrade;
+            pesoCurso.put(d.codigo(), w);
+            somaPesos += (long) w * horizonte;
+        }
+        long pesoMakespan = somaPesos + 1;
 
         LinearExprBuilder objetivo = LinearExpr.newBuilder();
-        objetivo.addTerm(makespan, pesoPrimario);
-        objetivo.addTerm(qtdPrimeiroPeriodo, -pesoContagemT1);
+        objetivo.addTerm(makespan, pesoMakespan);
         for (Disciplina d : pendentes) {
-            objetivo.addTerm(termo.get(d.codigo()), grafoService.prioridade(codigoCurriculo, d.codigo()));
+            objetivo.addTerm(termo.get(d.codigo()), pesoCurso.get(d.codigo()));
         }
         model.minimize(objetivo);
 
@@ -217,8 +230,38 @@ public class PlanejadorService {
                     + "mas a otimalidade não foi comprovada.");
         }
 
-        Map<String, Turma> turmaEscolhida = extrairTurmasEscolhidas(solver, termo, turmasDaDisc, selecaoTurma);
-        return montarResposta(solver, termo, pendentes, chRestante, otimo, avisos, turmaEscolhida, codigoCurriculo);
+        Map<String, Integer> periodoDe = new HashMap<>();
+        List<Disciplina> primeiroPeriodo = new ArrayList<>();
+        for (Disciplina d : pendentes) {
+            int t = (int) solver.value(termo.get(d.codigo()));
+            periodoDe.put(d.codigo(), t);
+            if (t == 1) primeiroPeriodo.add(d);
+        }
+        validarPlano(periodoDe, pendentes, porCodigo, concluidas, maxDisciplinas, avisos);
+
+        Map<String, Turma> turmaEscolhida = new LinkedHashMap<>(
+                extrairTurmasEscolhidas(solver, termo, turmasDaDisc, selecaoTurma));
+        if (request.considerarHorariosOrDefault() && ofertaRepository.disponivel()) {
+            // Completa matérias do 1º período sem horário no modelo (ex.: tópicos sem slot no SGA).
+            List<Disciplina> semTurmaModelo = new ArrayList<>();
+            for (Disciplina d : primeiroPeriodo) {
+                if (!turmaEscolhida.containsKey(d.codigo())) semTurmaModelo.add(d);
+            }
+            Map<String, Turma> extra = atribuirTurmasSemConflito(semTurmaModelo, codigoCurriculo, new ArrayList<>());
+            for (Map.Entry<String, Turma> e : extra.entrySet()) {
+                boolean conflita = false;
+                for (Turma ja : turmaEscolhida.values()) {
+                    if (e.getValue().conflitaCom(ja)) {
+                        conflita = true;
+                        break;
+                    }
+                }
+                if (!conflita) turmaEscolhida.put(e.getKey(), e.getValue());
+            }
+        }
+
+        return montarResposta(solver, termo, pendentes, totalRestantes, chRestante, otimo, avisos,
+                turmaEscolhida, codigoCurriculo);
     }
 
     /**
@@ -245,18 +288,7 @@ public class PlanejadorService {
                 avisos.add("Código concluído não reconhecido e ignorado: " + c);
             }
         }
-        List<String> excluidasValidas = new ArrayList<>();
-        for (String c : excluidas) {
-            Disciplina d = porCodigo.get(c);
-            if (d == null) {
-                avisos.add("Código excluído não reconhecido e ignorado: " + c);
-            } else {
-                excluidasValidas.add(d.nome());
-            }
-        }
-        if (!excluidasValidas.isEmpty()) {
-            avisos.add("Filtro do usuário — não incluir: " + String.join("; ", excluidasValidas));
-        }
+        registrarExcluidas(excluidas, porCodigo, avisos);
 
         int maxDisciplinas = request.maxDisciplinasOrDefault();
         boolean incluirOptativas = request.incluirOptativasOrDefault();
@@ -701,9 +733,156 @@ public class PlanejadorService {
         return teto;
     }
 
+    /**
+     * Se o usuário filtra uma disciplina, ninguém que dependa dela (pré ou co)
+     * pode entrar no plano — senão a rota inventa Cálculo II sem Cálculo I.
+     */
+    private Set<String> expandirExcluidas(Set<String> excluidas, List<Disciplina> todas,
+                                          Set<String> concluidas, Map<String, Disciplina> porCodigo,
+                                          List<String> avisos) {
+        Set<String> bloqueadas = new HashSet<>(excluidas);
+        boolean mudou = true;
+        while (mudou) {
+            mudou = false;
+            for (Disciplina d : todas) {
+                if (concluidas.contains(d.codigo()) || bloqueadas.contains(d.codigo())) continue;
+                boolean depende = false;
+                for (String pre : d.preRequisitos()) {
+                    if (porCodigo.containsKey(pre) && bloqueadas.contains(pre)) {
+                        depende = true;
+                        break;
+                    }
+                }
+                if (!depende) {
+                    for (String co : d.coRequisitos()) {
+                        if (porCodigo.containsKey(co) && bloqueadas.contains(co)) {
+                            depende = true;
+                            break;
+                        }
+                    }
+                }
+                if (depende) {
+                    bloqueadas.add(d.codigo());
+                    mudou = true;
+                }
+            }
+        }
+        List<String> extras = new ArrayList<>();
+        for (String c : bloqueadas) {
+            if (excluidas.contains(c)) continue;
+            Disciplina d = porCodigo.get(c);
+            if (d != null) extras.add(d.nome());
+        }
+        if (!extras.isEmpty()) {
+            avisos.add("Também fora do plano (dependem de matéria filtrada): " + String.join("; ", extras));
+        }
+        return bloqueadas;
+    }
+
+    private void validarPlano(Map<String, Integer> periodoDe, List<Disciplina> pendentes,
+                              Map<String, Disciplina> porCodigo, Set<String> concluidas,
+                              int maxDisciplinas, List<String> avisos) {
+        Map<Integer, Integer> qtd = new HashMap<>();
+        for (Disciplina d : pendentes) {
+            int t = periodoDe.getOrDefault(d.codigo(), -1);
+            qtd.merge(t, 1, Integer::sum);
+            for (String pre : d.preRequisitos()) {
+                if (concluidas.contains(pre) || !porCodigo.containsKey(pre)) continue;
+                Integer tp = periodoDe.get(pre);
+                if (tp == null) {
+                    avisos.add("Inconsistência: " + d.nome() + " ficou no plano sem o pré-requisito "
+                            + porCodigo.get(pre).nome() + ".");
+                } else if (tp >= t) {
+                    avisos.add("Inconsistência: " + d.nome() + " no período " + t
+                            + " sem ter concluído " + porCodigo.get(pre).nome() + ".");
+                }
+            }
+            for (String co : d.coRequisitos()) {
+                if (concluidas.contains(co) || !porCodigo.containsKey(co)) continue;
+                Integer tc = periodoDe.get(co);
+                if (tc == null) {
+                    avisos.add("Inconsistência: " + d.nome() + " ficou no plano sem o co-requisito "
+                            + porCodigo.get(co).nome() + ".");
+                } else if (!tc.equals(t)) {
+                    avisos.add("Inconsistência: co-requisito " + porCodigo.get(co).nome()
+                            + " fora do mesmo período de " + d.nome() + ".");
+                }
+            }
+        }
+        for (Map.Entry<Integer, Integer> e : qtd.entrySet()) {
+            if (e.getValue() > maxDisciplinas) {
+                avisos.add("Inconsistência: período " + e.getKey() + " com " + e.getValue()
+                        + " disciplinas (teto " + maxDisciplinas + ").");
+            }
+        }
+    }
+
+    /** Escolhe turmas do 1º período sem mexer na rota acadêmica. */
+    private Map<String, Turma> atribuirTurmasSemConflito(List<Disciplina> doPeriodo,
+                                                         String codigoCurriculo,
+                                                         List<String> avisos) {
+        List<Disciplina> ordenadas = new ArrayList<>(doPeriodo);
+        ordenadas.sort(Comparator.comparingInt(
+                (Disciplina d) -> grafoService.prioridade(codigoCurriculo, d.codigo())).reversed());
+
+        Map<String, Turma> escolhida = new LinkedHashMap<>();
+        List<String> semEncaixe = new ArrayList<>();
+        for (Disciplina d : ordenadas) {
+            OfertaRepository.Casamento m = ofertaRepository.casar(d.nome());
+            if (m == null || m.turmas().isEmpty()) continue;
+            List<Turma> turmas = new ArrayList<>();
+            for (Turma t : m.turmas()) {
+                if (t.horarios() != null && !t.horarios().isEmpty()) turmas.add(t);
+            }
+            if (turmas.isEmpty()) continue;
+            turmas.sort(Comparator.comparingInt(this::bonusHorarioTurma).reversed());
+            Turma ok = null;
+            for (Turma t : turmas) {
+                boolean conflita = false;
+                for (Turma outra : escolhida.values()) {
+                    if (t.conflitaCom(outra)) {
+                        conflita = true;
+                        break;
+                    }
+                }
+                if (!conflita) {
+                    ok = t;
+                    break;
+                }
+            }
+            if (ok != null) escolhida.put(d.codigo(), ok);
+            else semEncaixe.add(d.nome());
+        }
+        if (!escolhida.isEmpty()) {
+            avisos.add(String.format("Oferta %s: turmas encaixadas em %d de %d disciplina(s) do 1º período.",
+                    ofertaRepository.semestre(), escolhida.size(), doPeriodo.size()));
+        }
+        if (!semEncaixe.isEmpty()) {
+            avisos.add("Sem turma sem choque neste semestre (a rota acadêmica foi mantida): "
+                    + String.join("; ", semEncaixe));
+        }
+        return escolhida;
+    }
+
+    private void registrarExcluidas(Set<String> excluidas, Map<String, Disciplina> porCodigo,
+                                    List<String> avisos) {
+        List<String> validas = new ArrayList<>();
+        for (String c : excluidas) {
+            Disciplina d = porCodigo.get(c);
+            if (d == null) {
+                avisos.add("Código excluído não reconhecido e ignorado: " + c);
+            } else {
+                validas.add(d.nome());
+            }
+        }
+        if (!validas.isEmpty()) {
+            avisos.add("Filtro do usuário — não incluir: " + String.join("; ", validas));
+        }
+    }
+
     private PlanoResponse montarResposta(CpSolver solver, Map<String, IntVar> termo,
-                                         List<Disciplina> pendentes, int chRestante,
-                                         boolean otimo, List<String> avisos,
+                                         List<Disciplina> pendentes, int totalRestantes,
+                                         int chRestante, boolean otimo, List<String> avisos,
                                          Map<String, Turma> turmaEscolhida,
                                          String codigoCurriculo) {
         Map<Integer, List<Disciplina>> porPeriodo = new TreeMap<>();
@@ -737,7 +916,7 @@ public class PlanejadorService {
             periodos.add(new PeriodoDTO(numeroSequencial, lista.size(), chTotal, dtos));
         }
 
-        return new PlanoResponse("OK", periodos.size(), pendentes.size(), chRestante, otimo,
+        return new PlanoResponse("OK", periodos.size(), totalRestantes, chRestante, otimo,
                 periodos, avisos);
     }
 

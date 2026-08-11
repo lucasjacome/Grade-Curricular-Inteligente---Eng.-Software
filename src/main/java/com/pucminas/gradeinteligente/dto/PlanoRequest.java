@@ -14,7 +14,7 @@ import java.util.List;
  * @param incluirOptativas         se as optativas genéricas entram no plano
  * @param considerarHorarios       se a oferta/horários entram no modelo
  * @param codigoCurriculo          código da grade (37203 / 372)
- * @param excluidas                códigos a ignorar no próximo semestre (filtro do usuário)
+ * @param excluidas                códigos a ignorar no plano (filtro do usuário)
  * @param orcamentoMensalMax       teto de mensalidade estimada (R$); {@code null} = sem limite
  */
 public record PlanoRequest(

@@ -86,10 +86,11 @@ const estado = {
     grafo: null,
     concluidas: new Set(),
     excluidas: new Set(),
-    cy: null,
+    mapa: null,
     cardByCode: {},
     ultimoPlano: null,
     semestre: null,
+    oferta: null,
 };
 
 // Paleta simples e consistente (4 categorias)
@@ -103,8 +104,6 @@ const COR = {
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
-    if (window.cytoscapeDagre) cytoscape.use(window.cytoscapeDagre);
-
     restaurarOrcamento();
     estado.curriculos = await fetch(`${API}/api/curriculos`).then(r => r.json());
     popularSeletorCurriculo();
@@ -112,20 +111,78 @@ async function init() {
     ligarEventos();
 }
 
+function rotuloCurriculo(c) {
+    return c?.rotulo || (`Currículo ${c?.codigoCurriculo || ""}`);
+}
+
 function popularSeletorCurriculo() {
-    const sel = document.getElementById("selCurriculo");
-    sel.innerHTML = "";
     const existe = estado.curriculos.some(c => c.codigoCurriculo === estado.codigoCurriculo);
     if (!existe && estado.curriculos.length) {
         estado.codigoCurriculo = estado.curriculos[0].codigoCurriculo;
     }
-    estado.curriculos.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c.codigoCurriculo;
-        opt.textContent = `${c.rotulo} · ${c.codigoCurriculo}`;
-        if (c.codigoCurriculo === estado.codigoCurriculo) opt.selected = true;
-        sel.appendChild(opt);
+    renderMenuCurriculo();
+    atualizarBotaoCurriculo();
+}
+
+function atualizarBotaoCurriculo() {
+    const atual = estado.curriculos.find(c => c.codigoCurriculo === estado.codigoCurriculo);
+    const titulo = document.getElementById("selCurriculoTitulo");
+    const codigo = document.getElementById("selCurriculoCodigo");
+    if (titulo) titulo.textContent = atual ? rotuloCurriculo(atual) : "Selecione";
+    if (codigo) codigo.textContent = atual?.codigoCurriculo || "";
+}
+
+function renderMenuCurriculo() {
+    const menu = document.getElementById("menuCurriculo");
+    if (!menu) return;
+    menu.innerHTML = estado.curriculos.map(c => {
+        const ativo = c.codigoCurriculo === estado.codigoCurriculo;
+        const meta = [c.codigoCurriculo, c.situacao].filter(Boolean).join(" · ");
+        return `<button type="button" role="option" aria-selected="${ativo}"
+            class="hdr-dd-opt${ativo ? " is-active" : ""}" data-codigo="${c.codigoCurriculo}">
+            <span class="hdr-dd-opt-main">
+                <span class="hdr-dd-opt-title">${rotuloCurriculo(c)}</span>
+                <span class="hdr-dd-opt-meta">${meta}</span>
+            </span>
+            <svg class="hdr-dd-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5L20 7"/>
+            </svg>
+        </button>`;
+    }).join("");
+    menu.querySelectorAll(".hdr-dd-opt").forEach(btn => {
+        btn.addEventListener("click", e => {
+            e.stopPropagation();
+            fecharSeletorCurriculo();
+            trocarCurriculo(btn.dataset.codigo);
+        });
     });
+}
+
+function abrirSeletorCurriculo() {
+    const wrap = document.getElementById("selCurriculo");
+    const menu = document.getElementById("menuCurriculo");
+    const btn = document.getElementById("btnSelCurriculo");
+    if (!wrap || !menu) return;
+    document.getElementById("painelExcluir")?.classList.add("hidden");
+    renderMenuCurriculo();
+    menu.classList.remove("hidden");
+    wrap.classList.add("is-open");
+    btn?.setAttribute("aria-expanded", "true");
+}
+
+function fecharSeletorCurriculo() {
+    const wrap = document.getElementById("selCurriculo");
+    const menu = document.getElementById("menuCurriculo");
+    const btn = document.getElementById("btnSelCurriculo");
+    menu?.classList.add("hidden");
+    wrap?.classList.remove("is-open");
+    btn?.setAttribute("aria-expanded", "false");
+}
+
+function toggleSeletorCurriculo() {
+    const menu = document.getElementById("menuCurriculo");
+    if (menu?.classList.contains("hidden")) abrirSeletorCurriculo();
+    else fecharSeletorCurriculo();
 }
 
 async function carregarCurriculoAtivo() {
@@ -134,12 +191,14 @@ async function carregarCurriculoAtivo() {
     carregarConcluidas();
     carregarExcluidas();
 
-    const [curriculo, grafo] = await Promise.all([
+    const [curriculo, grafo, oferta] = await Promise.all([
         fetch(`${API}/api/curriculo?codigo=${encodeURIComponent(codigo)}`).then(r => r.json()),
         fetch(`${API}/api/grafo?codigo=${encodeURIComponent(codigo)}`).then(r => r.json()),
+        fetch(`${API}/api/oferta?codigo=${encodeURIComponent(codigo)}`).then(r => r.json()).catch(() => null),
     ]);
     estado.curriculo = curriculo;
     estado.grafo = grafo;
+    estado.oferta = oferta;
     estado.ultimoPlano = null;
     estado.semestre = null;
 
@@ -150,36 +209,45 @@ async function carregarCurriculoAtivo() {
     document.getElementById("planoVazio")?.classList.remove("hidden");
     document.getElementById("planoConteudo")?.classList.add("hidden");
     document.getElementById("resumo").innerHTML = "";
+    const notaCusto = document.getElementById("resumoCustoP1");
+    if (notaCusto) notaCusto.textContent = "";
     document.getElementById("periodos").innerHTML = "";
     document.getElementById("avisos").innerHTML = "";
     document.getElementById("gradeSemanal").innerHTML = "";
 
     renderChecklist();
+    atualizarProgresso();
     renderGrafo();
     renderConsulta();
     renderPainelExcluir();
-    atualizarProgresso();
 }
 
 async function trocarCurriculo(codigo) {
     if (!codigo || codigo === estado.codigoCurriculo) return;
     estado.codigoCurriculo = codigo;
-    const sel = document.getElementById("selCurriculo");
-    if (sel) sel.value = codigo;
+    atualizarBotaoCurriculo();
     await carregarCurriculoAtivo();
 }
 
 function ligarEventos() {
+    document.getElementById("btnRecentrarMapa")?.addEventListener("click", recentrarMapa);
+    ligarPanMapa();
     document.getElementById("btnCalcular").addEventListener("click", calcular);
     document.getElementById("btnProximoSemestre").addEventListener("click", calcularProximoSemestre);
     document.getElementById("btnLimpar").addEventListener("click", limpar);
     document.getElementById("busca").addEventListener("input", filtrarBusca);
     document.getElementById("buscaConsulta").addEventListener("input", filtrarConsulta);
-    document.getElementById("selCurriculo").addEventListener("change", e => trocarCurriculo(e.target.value));
+    document.getElementById("filtroRequisitosOk")?.addEventListener("change", filtrarConsulta);
+    document.getElementById("btnSelCurriculo")?.addEventListener("click", e => {
+        e.stopPropagation();
+        toggleSeletorCurriculo();
+    });
+    document.getElementById("selCurriculo")?.addEventListener("click", e => e.stopPropagation());
     document.getElementById("orcamentoMensal")?.addEventListener("change", persistirOrcamento);
     document.getElementById("orcamentoMensal")?.addEventListener("input", persistirOrcamento);
     document.getElementById("btnFiltroExcluir").addEventListener("click", e => {
         e.stopPropagation();
+        fecharSeletorCurriculo();
         document.getElementById("painelExcluir").classList.toggle("hidden");
         renderPainelExcluir();
     });
@@ -192,6 +260,7 @@ function ligarEventos() {
         renderPainelExcluir();
     });
     document.addEventListener("click", () => {
+        fecharSeletorCurriculo();
         const painel = document.getElementById("painelExcluir");
         if (painel && !painel.classList.contains("hidden")) {
             painel.classList.add("hidden");
@@ -202,7 +271,10 @@ function ligarEventos() {
     });
     document.getElementById("modalBackdrop").addEventListener("click", fecharModal);
     document.addEventListener("keydown", e => {
-        if (e.key === "Escape") fecharModal();
+        if (e.key === "Escape") {
+            fecharSeletorCurriculo();
+            fecharModal();
+        }
     });
 }
 
@@ -341,7 +413,7 @@ function trocarTab(tab) {
         b.classList.toggle("border-transparent", !ativo);
         b.classList.toggle("text-slate-400", !ativo);
     });
-    if (tab === "mapa" && estado.cy) estado.cy.resize();
+    if (tab === "mapa") recentrarMapa();
     if (tab === "consulta") atualizarConsulta();
 }
 
@@ -465,8 +537,8 @@ function toggleConcluida(codigo) {
     const bloqueio = motivoBloqueioChecklist(codigo);
     if (bloqueio) return;
 
-    if (estaConcluida(codigo)) estado.concluidas.delete(codigo);
-    else estado.concluidas.add(codigo);
+    if (estaConcluida(codigo)) estado.concluidas.delete(String(codigo));
+    else estado.concluidas.add(String(codigo));
 
     atualizarEstadoCards();
     salvarConcluidas();
@@ -493,193 +565,442 @@ function limpar() {
     renderPainelExcluir();
 }
 
-/* ---------- Grafo ---------- */
+/* ---------- Mapa (HTML nítido + SVG atrás dos cards) ---------- */
+
+const MAPA = {
+    colW: 268,
+    rowH: 84,
+    nodeW: 196,
+    nodeH: 60,
+    headerH: 36,
+    highwayH: 32,
+    top: 72,
+    left: 28,
+};
+
+function rotuloMapa(nome) {
+    return String(nome || "")
+        .replace(/^Trabalho Interdisciplinar:\s*/i, "TI · ")
+        .replace(/^Laboratório de Desenvolvimento de\s*/i, "Lab. ")
+        .replace(/^Laboratório de\s*/i, "Lab. ")
+        .replace(/^Desenvolvimento de\s*/i, "Desenv. ");
+}
+
+function montarLayoutGrade(nos, arestas) {
+    const oficial = new Map();
+    (estado.curriculo?.disciplinas || []).forEach((d, i) => oficial.set(String(d.codigo), i));
+
+    const porPeriodo = new Map();
+    for (const n of nos) {
+        const p = Math.max(1, n.periodoSugerido || 1);
+        if (!porPeriodo.has(p)) porPeriodo.set(p, []);
+        porPeriodo.get(p).push(n);
+    }
+    const periodos = [...porPeriodo.keys()].sort((a, b) => a - b);
+    const minP = periodos[0] || 1;
+
+    const preDe = new Map();
+    for (const n of nos) preDe.set(String(n.codigo), []);
+    for (const a of arestas) {
+        const dest = String(a.destino);
+        if (a.tipo === "PRE" && preDe.has(dest)) preDe.get(dest).push(String(a.origem));
+    }
+
+    const yDe = new Map();
+    const pos = new Map();
+
+    for (const p of periodos) {
+        const lista = porPeriodo.get(p);
+        const parent = new Map();
+        const find = x => {
+            while (parent.get(x) !== x) {
+                parent.set(x, parent.get(parent.get(x)));
+                x = parent.get(x);
+            }
+            return x;
+        };
+        for (const n of lista) parent.set(String(n.codigo), String(n.codigo));
+        const ids = new Set(lista.map(n => String(n.codigo)));
+        for (const a of arestas) {
+            if (a.tipo !== "CO") continue;
+            const o = String(a.origem), d = String(a.destino);
+            if (ids.has(o) && ids.has(d)) {
+                const ra = find(o), rb = find(d);
+                if (ra !== rb) parent.set(ra, rb);
+            }
+        }
+        const buckets = new Map();
+        for (const n of lista) {
+            const r = find(String(n.codigo));
+            if (!buckets.has(r)) buckets.set(r, []);
+            buckets.get(r).push(n);
+        }
+
+        const scoreNo = n => {
+            const pres = (preDe.get(String(n.codigo)) || []).filter(c => yDe.has(c));
+            if (!pres.length) return 1e6 + (oficial.get(String(n.codigo)) ?? 0);
+            return pres.reduce((s, c) => s + yDe.get(c), 0) / pres.length;
+        };
+        const grupos = [...buckets.values()];
+        grupos.sort((A, B) => {
+            const sa = A.reduce((s, n) => s + scoreNo(n), 0) / A.length;
+            const sb = B.reduce((s, n) => s + scoreNo(n), 0) / B.length;
+            if (sa !== sb) return sa - sb;
+            const ia = Math.min(...A.map(n => oficial.get(String(n.codigo)) ?? 0));
+            const ib = Math.min(...B.map(n => oficial.get(String(n.codigo)) ?? 0));
+            return ia - ib;
+        });
+
+        const ordenados = [];
+        for (const g of grupos) {
+            g.sort((a, b) => (oficial.get(String(a.codigo)) ?? 0) - (oficial.get(String(b.codigo)) ?? 0));
+            ordenados.push(...g);
+        }
+
+        ordenados.forEach((n, i) => {
+            const x = Math.round(MAPA.left + (p - minP) * MAPA.colW + MAPA.nodeW / 2);
+            const y = Math.round(MAPA.top + MAPA.headerH + MAPA.highwayH + i * MAPA.rowH + MAPA.nodeH / 2);
+            const id = String(n.codigo);
+            pos.set(id, { x, y, periodo: p });
+            yDe.set(id, y);
+        });
+    }
+
+    const maxLinhas = Math.max(1, ...periodos.map(p => porPeriodo.get(p).length));
+    return { pos, periodos, porPeriodo, minP, maxLinhas };
+}
+
+function escHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+}
+
+function caixaDoNo(p) {
+    const hw = MAPA.nodeW / 2, hh = MAPA.nodeH / 2;
+    return {
+        x: p.x, y: p.y, periodo: p.periodo,
+        left: p.x - hw, right: p.x + hw, top: p.y - hh, bottom: p.y + hh,
+    };
+}
+
+function gutterApos(periodo, minP) {
+    const col = periodo - minP;
+    return MAPA.left + col * MAPA.colW + MAPA.nodeW + (MAPA.colW - MAPA.nodeW) / 2;
+}
+
+function gutterAntes(periodo, minP) {
+    const col = periodo - minP;
+    return MAPA.left + col * MAPA.colW - (MAPA.colW - MAPA.nodeW) / 2;
+}
+
+function caminhoPre(src, tgt, minP, faixaHwy) {
+    const x1 = src.right, y1 = src.y, x2 = tgt.left, y2 = tgt.y;
+    const g1 = gutterApos(src.periodo, minP);
+    const g2 = gutterAntes(tgt.periodo, minP);
+    if (tgt.periodo <= src.periodo + 1) {
+        const mid = Math.round((g1 + g2) / 2);
+        return `M ${x1} ${y1} L ${mid} ${y1} L ${mid} ${y2} L ${x2} ${y2}`;
+    }
+    return `M ${x1} ${y1} L ${g1} ${y1} L ${g1} ${faixaHwy} L ${g2} ${faixaHwy} L ${g2} ${y2} L ${x2} ${y2}`;
+}
+
+function caminhoCo(src, tgt) {
+    const loop = src.right + Math.round((MAPA.colW - MAPA.nodeW) * 0.42);
+    return `M ${src.right} ${src.y} L ${loop} ${src.y} L ${loop} ${tgt.y} L ${tgt.right} ${tgt.y}`;
+}
 
 function renderGrafo() {
-    const elements = [];
-    for (const n of estado.grafo.nos) {
-        elements.push({
-            data: {
-                id: n.codigo,
-                label: n.nome,
-                destrava: n.destrava,
-                optativa: n.optativa,
-                periodo: n.periodoSugerido,
-            },
-        });
-    }
-    for (const a of estado.grafo.arestas) {
-        elements.push({
-            data: { id: `${a.origem}->${a.destino}-${a.tipo}`, source: a.origem, target: a.destino, tipo: a.tipo },
-        });
-    }
+    const nos = estado.grafo?.nos || [];
+    const arestas = estado.grafo?.arestas || [];
+    const layout = montarLayoutGrade(nos, arestas);
+    const cena = document.getElementById("mapaCena");
+    const svg = document.getElementById("mapaSvg");
+    const cards = document.getElementById("mapaCards");
+    if (!cena || !svg || !cards) return;
 
-    estado.cy = cytoscape({
-        container: document.getElementById("cy"),
-        elements,
-        minZoom: 0.2,
-        maxZoom: 2.5,
-        wheelSensitivity: 0.25,
-        autounselectify: true,
-        style: [
-            {
-                selector: "node",
-                style: {
-                    "label": "data(label)",
-                    "text-wrap": "wrap",
-                    "text-max-width": "140px",
-                    "font-size": "9px",
-                    "font-weight": 600,
-                    "text-valign": "center",
-                    "text-halign": "center",
-                    "color": "#f8fafc",
-                    "text-outline-width": 1.5,
-                    "text-outline-color": "#020617",
-                    "width": 150,
-                    "height": 46,
-                    "padding": "6px",
-                    "shape": "round-rectangle",
-                    "background-color": COR.comum.bg,
-                    "border-width": 2,
-                    "border-color": COR.comum.border,
-                    "transition-property": "background-color, border-color, opacity",
-                    "transition-duration": "0.2s",
-                },
-            },
-            {
-                selector: "edge[tipo = 'PRE']",
-                style: {
-                    "width": 2,
-                    "line-color": "#94a3b8",
-                    "target-arrow-color": "#94a3b8",
-                    "target-arrow-shape": "triangle",
-                    "curve-style": "taxi",
-                    "taxi-direction": "rightward",
-                    "taxi-turn": "40px",
-                    "taxi-turn-min-distance": "8px",
-                    "arrow-scale": 0.9,
-                    "opacity": 0.75,
-                },
-            },
-            {
-                selector: "edge[tipo = 'CO']",
-                style: {
-                    "width": 2,
-                    "line-color": "#fbbf24",
-                    "line-style": "dashed",
-                    "target-arrow-color": "#fbbf24",
-                    "target-arrow-shape": "triangle",
-                    "curve-style": "bezier",
-                    "control-point-step-size": 30,
-                    "arrow-scale": 0.9,
-                    "opacity": 0.8,
-                },
-            },
-            { selector: ".apagado", style: { "opacity": 0.12 } },
-        ],
-        layout: layoutDagre(),
-    });
+    const largura = MAPA.left + layout.periodos.length * MAPA.colW + 24;
+    const altura = MAPA.top + MAPA.headerH + MAPA.highwayH + layout.maxLinhas * MAPA.rowH + 28;
+    cena.style.width = largura + "px";
+    cena.style.height = altura + "px";
+    svg.setAttribute("viewBox", `0 0 ${largura} ${altura}`);
+    svg.setAttribute("width", largura);
+    svg.setAttribute("height", altura);
+    estado.mapaBaseW = largura;
+    estado.mapaBaseH = altura;
+    aplicarZoomMapa(estado.mapaZoom || 1);
 
-    estado.cy.on("tap", "node", evt => {
-        const id = evt.target.id();
-        if (motivoBloqueioChecklist(id)) {
-            mostrarInfo(evt.target);
-            return;
-        }
-        toggleConcluida(id);
+    const hwyBase = MAPA.top + MAPA.headerH + 10;
+    const vizinhos = new Map();
+    const ligar = (a, b) => {
+        if (!vizinhos.has(a)) vizinhos.set(a, new Set());
+        if (!vizinhos.has(b)) vizinhos.set(b, new Set());
+        vizinhos.get(a).add(b);
+        vizinhos.get(b).add(a);
+    };
+
+    let svgHtml = `
+        <defs>
+            <marker id="seta-pre" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 1.2 L 10 5 L 0 8.8 Z" fill="#94a3b8"/>
+            </marker>
+            <marker id="seta-co" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 1.2 L 10 5 L 0 8.8 Z" fill="#fbbf24"/>
+            </marker>
+        </defs>`;
+
+    let hwyI = 0;
+    for (const a of arestas) {
+        const o = String(a.origem), d = String(a.destino);
+        const po = layout.pos.get(o), pd = layout.pos.get(d);
+        if (!po || !pd) continue;
+        ligar(o, d);
+        const src = caixaDoNo(po), tgt = caixaDoNo(pd);
+        const tipo = a.tipo === "CO" ? "CO" : "PRE";
+        const dPath = tipo === "CO"
+            ? caminhoCo(src, tgt)
+            : caminhoPre(src, tgt, layout.minP, hwyBase + ((hwyI++) % 5) * 4);
+        svgHtml += `<path class="mapa-aresta mapa-aresta--${tipo.toLowerCase()}" data-src="${escHtml(o)}" data-tgt="${escHtml(d)}" d="${dPath}" fill="none" marker-end="url(#seta-${tipo === "CO" ? "co" : "pre"})"/>`;
+    }
+    svg.innerHTML = svgHtml;
+
+    let cardsHtml = "";
+    for (const p of layout.periodos) {
+        const x = MAPA.left + (p - layout.minP) * MAPA.colW;
+        cardsHtml += `<div class="mapa-periodo" style="left:${x}px;top:${MAPA.top}px;width:${MAPA.nodeW}px">${p}º período</div>`;
+    }
+    for (const n of nos) {
+        const id = String(n.codigo);
+        const p = layout.pos.get(id);
+        if (!p) continue;
+        cardsHtml += `<button type="button" class="mapa-card" data-cod="${escHtml(id)}"
+            style="left:${p.x - MAPA.nodeW / 2}px;top:${p.y - MAPA.nodeH / 2}px;width:${MAPA.nodeW}px;height:${MAPA.nodeH}px">
+            <span class="mapa-card-nome">${escHtml(rotuloMapa(n.nome))}</span>
+        </button>`;
+    }
+    cards.innerHTML = cardsHtml;
+
+    estado.mapa = { pos: layout.pos, vizinhos, nos };
+
+    cards.querySelectorAll(".mapa-card").forEach(el => {
+        const codigo = el.dataset.cod;
+        el.addEventListener("click", () => {
+            if (estado.mapaDrag) return;
+            if (motivoBloqueioChecklist(codigo)) {
+                mostrarInfo(codigo);
+                return;
+            }
+            toggleConcluida(codigo);
+        });
+        el.addEventListener("mouseenter", () => agendarFocoMapa(codigo));
+        el.addEventListener("mouseleave", () => cancelarFocoMapa());
     });
-    estado.cy.on("mouseover", "node", evt => mostrarInfo(evt.target));
-    estado.cy.on("mouseout", "node", () => document.getElementById("infoNo").classList.add("hidden"));
 
     pintarGrafoBase();
+    recentrarMapa();
 }
 
-function layoutDagre() {
-    if (window.cytoscapeDagre) {
-        return { name: "dagre", rankDir: "LR", nodeSep: 18, edgeSep: 8, rankSep: 80, ranker: "network-simplex", padding: 30 };
+const FOCO_MAPA_MS = 800;
+const MAPA_ZOOM_MIN = 0.4;
+const MAPA_ZOOM_MAX = 2.4;
+let focoMapaTimer = null;
+
+function agendarFocoMapa(codigo) {
+    cancelarFocoMapa();
+    focoMapaTimer = setTimeout(() => {
+        focarNoMapa(codigo);
+        mostrarInfo(codigo);
+    }, FOCO_MAPA_MS);
+}
+
+function cancelarFocoMapa() {
+    if (focoMapaTimer) {
+        clearTimeout(focoMapaTimer);
+        focoMapaTimer = null;
     }
-    return { name: "breadthfirst", directed: true, spacingFactor: 1.3, padding: 30 };
+    limparFocoMapa();
+    document.getElementById("infoNo")?.classList.add("hidden");
 }
 
-function mostrarInfo(node) {
-    const d = estado.curriculo.disciplinas.find(x => x.codigo === node.id());
+function ligarPanMapa() {
+    const sc = document.getElementById("mapaScroll");
+    if (!sc || sc.dataset.panOk) return;
+    sc.dataset.panOk = "1";
+
+    let pan = null;
+    sc.addEventListener("pointerdown", e => {
+        if (e.button !== 0) return;
+        if (e.target.closest(".hdr-dd, button:not(.mapa-card)")) return;
+        pan = {
+            x: e.clientX, y: e.clientY,
+            sl: sc.scrollLeft, st: sc.scrollTop,
+            moved: false,
+        };
+        sc.classList.add("is-panning");
+        try { sc.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    });
+    sc.addEventListener("pointermove", e => {
+        if (!pan) return;
+        const dx = e.clientX - pan.x;
+        const dy = e.clientY - pan.y;
+        if (!pan.moved && Math.hypot(dx, dy) < 6) return;
+        pan.moved = true;
+        estado.mapaDrag = true;
+        cancelarFocoMapa();
+        sc.scrollLeft = pan.sl - dx;
+        sc.scrollTop = pan.st - dy;
+    });
+    const soltar = () => {
+        if (!pan) return;
+        const arrastou = pan.moved;
+        pan = null;
+        sc.classList.remove("is-panning");
+        if (arrastou) setTimeout(() => { estado.mapaDrag = false; }, 0);
+        else estado.mapaDrag = false;
+    };
+    sc.addEventListener("pointerup", soltar);
+    sc.addEventListener("pointercancel", soltar);
+
+    sc.addEventListener("wheel", e => {
+        e.preventDefault();
+        const passo = e.deltaY > 0 ? 0.9 : 1.1;
+        aplicarZoomMapa((estado.mapaZoom || 1) * passo, e.clientX, e.clientY);
+    }, { passive: false });
+}
+
+function aplicarZoomMapa(novoZoom, clientX, clientY) {
+    const sc = document.getElementById("mapaScroll");
+    const box = document.getElementById("mapaZoomBox");
+    const cena = document.getElementById("mapaCena");
+    if (!sc || !box || !cena || !estado.mapaBaseW) return;
+
+    const antigo = estado.mapaZoom || 1;
+    const z = Math.min(MAPA_ZOOM_MAX, Math.max(MAPA_ZOOM_MIN, novoZoom));
+    const rect = sc.getBoundingClientRect();
+    const mx = clientX != null ? clientX - rect.left : sc.clientWidth / 2;
+    const my = clientY != null ? clientY - rect.top : sc.clientHeight / 2;
+    const cx = (sc.scrollLeft + mx) / antigo;
+    const cy = (sc.scrollTop + my) / antigo;
+
+    estado.mapaZoom = z;
+    box.style.width = (estado.mapaBaseW * z) + "px";
+    box.style.height = (estado.mapaBaseH * z) + "px";
+    cena.style.transform = `scale(${z})`;
+
+    sc.scrollLeft = cx * z - mx;
+    sc.scrollTop = cy * z - my;
+}
+
+function recentrarMapa() {
+    aplicarZoomMapa(1);
+    const sc = document.getElementById("mapaScroll");
+    if (sc) sc.scrollTo({ left: 0, top: 0 });
+}
+
+function focarNoMapa(codigo) {
+    codigo = String(codigo);
+    const liga = estado.mapa?.vizinhos?.get(codigo) || new Set();
+    document.querySelectorAll(".mapa-card").forEach(el => {
+        const id = el.dataset.cod;
+        el.classList.toggle("mapa-foco", id === codigo || liga.has(id));
+        el.classList.toggle("mapa-dim", id !== codigo && !liga.has(id));
+    });
+    document.querySelectorAll(".mapa-aresta").forEach(el => {
+        const ok = el.dataset.src === codigo || el.dataset.tgt === codigo;
+        el.classList.toggle("mapa-foco", ok);
+        el.classList.toggle("mapa-dim", !ok);
+    });
+}
+
+function limparFocoMapa() {
+    document.querySelectorAll(".mapa-card, .mapa-aresta").forEach(el => {
+        el.classList.remove("mapa-foco", "mapa-dim");
+    });
+}
+
+function mostrarInfo(codigo) {
+    const d = disciplinaDe(codigo);
     if (!d) return;
-    const nome = c => (estado.curriculo.disciplinas.find(x => x.codigo === c)?.nome ?? c);
+    const no = (estado.grafo?.nos || []).find(n => String(n.codigo) === String(codigo));
+    const nome = c => nomeDe(c);
     const bloqueio = motivoBloqueioChecklist(d.codigo);
     const dica = bloqueio
         ? `<div class="mt-1 text-[10px] text-amber-300">${bloqueio}</div>`
         : `<div class="mt-1 text-[10px] text-slate-500">${estaConcluida(d.codigo) ? "Clique para desmarcar" : "Clique para marcar como concluída"}</div>`;
     const box = document.getElementById("infoNo");
+    if (!box) return;
     box.innerHTML = `
-        <div class="font-bold text-[13px] mb-1 text-white">${d.nome}</div>
-        <div class="text-slate-400 mb-2">${d.codigo} · ${d.cargaHoraria}h${d.semipresencial ? " · semipresencial" : ""}</div>
-        <div><span class="text-slate-500">Pré-requisitos:</span> ${d.preRequisitos.map(nome).join(", ") || "nenhum"}</div>
-        <div><span class="text-slate-500">Co-requisitos:</span> ${d.coRequisitos.map(nome).join(", ") || "nenhum"}</div>
-        <div class="mt-1 text-amber-400 font-semibold">Destrava ${node.data("destrava")} disciplina(s)</div>
+        <div class="font-bold text-[13px] mb-1 text-white">${escHtml(d.nome)}</div>
+        <div class="text-slate-400 mb-2">${escHtml(d.codigo)} · ${d.cargaHoraria}h${d.semipresencial ? " · semipresencial" : ""}</div>
+        <div><span class="text-slate-500">Pré-requisitos:</span> ${d.preRequisitos.map(nome).map(escHtml).join(", ") || "nenhum"}</div>
+        <div><span class="text-slate-500">Co-requisitos:</span> ${d.coRequisitos.map(nome).map(escHtml).join(", ") || "nenhum"}</div>
+        <div class="mt-1 text-amber-400 font-semibold">Destrava ${no?.destrava ?? 0} disciplina(s)</div>
         ${dica}`;
     box.classList.remove("hidden");
 }
 
-function categoria(n) {
-    if (estaConcluida(n.id())) return "concluida";
-    if (n.data("optativa")) return "optativa";
-    if (n.data("destrava") >= 3) return "gargalo";
+function categoriaCard(codigo) {
+    const no = (estado.grafo?.nos || []).find(n => String(n.codigo) === String(codigo));
+    if (estaConcluida(codigo)) return "concluida";
+    if (no?.optativa) return "optativa";
+    if ((no?.destrava ?? 0) >= 3) return "gargalo";
     return "comum";
 }
 
 function pintarGrafoBase() {
-    if (!estado.cy) return;
-    estado.cy.batch(() => {
-        estado.cy.nodes().forEach(n => {
-            const feita = estaConcluida(n.id());
-            const bloqueada = !!motivoBloqueioChecklist(n.id()) && !feita;
-            const c = bloqueada
-                ? { bg: "#334155", border: "#1e293b" }
-                : COR[categoria(n)];
-            n.removeClass("apagado");
-            n.style({
-                "background-color": c.bg,
-                "border-color": c.border,
-                "opacity": bloqueada ? 0.38 : 1,
-            });
-        });
+    document.querySelectorAll(".mapa-card").forEach(el => {
+        const id = el.dataset.cod;
+        const feita = estaConcluida(id);
+        const bloqueada = !!motivoBloqueioChecklist(id) && !feita;
+        const c = bloqueada ? { bg: "#334155", border: "#1e293b" } : COR[categoriaCard(id)];
+        el.classList.remove("apagado");
+        el.style.background = c.bg;
+        el.style.borderColor = c.border;
+        el.style.opacity = bloqueada ? "0.42" : "1";
     });
 }
 
-// Após calcular: degradê de um único tom (índigo) por período => leitura clara da ordem.
 function corPorPeriodo(idx, total) {
-    const l = 68 - (idx / Math.max(1, total - 1)) * 30; // 68% (cedo) -> 38% (tarde)
+    const l = 68 - (idx / Math.max(1, total - 1)) * 30;
     return { bg: `hsl(245, 62%, ${l}%)`, border: `hsl(245, 55%, ${Math.max(28, l - 12)}%)` };
 }
 
 function pintarGrafoPorPlano(mapaPeriodoDoNo, totalPeriodos) {
-    if (!estado.cy) return;
-    estado.cy.batch(() => {
-        estado.cy.nodes().forEach(n => {
-            const id = n.id();
-            if (estaConcluida(id)) {
-                n.removeClass("apagado");
-                n.style({ "background-color": COR.concluida.bg, "border-color": COR.concluida.border, "opacity": 1 });
-            } else if (id in mapaPeriodoDoNo) {
-                const c = corPorPeriodo(mapaPeriodoDoNo[id], totalPeriodos);
-                n.removeClass("apagado");
-                n.style({ "background-color": c.bg, "border-color": c.border, "opacity": 1 });
-            } else {
-                n.addClass("apagado");
-            }
-        });
+    document.querySelectorAll(".mapa-card").forEach(el => {
+        const id = el.dataset.cod;
+        if (estaConcluida(id)) {
+            el.classList.remove("apagado");
+            el.style.background = COR.concluida.bg;
+            el.style.borderColor = COR.concluida.border;
+            el.style.opacity = "1";
+        } else if (id in mapaPeriodoDoNo) {
+            const c = corPorPeriodo(mapaPeriodoDoNo[id], totalPeriodos);
+            el.classList.remove("apagado");
+            el.style.background = c.bg;
+            el.style.borderColor = c.border;
+            el.style.opacity = "1";
+        } else {
+            el.classList.add("apagado");
+        }
     });
 }
 
 /* ---------- Planejamento ---------- */
 
+function setBtnLabel(btn, texto) {
+    const label = btn?.querySelector(".hdr-btn-label");
+    if (label) label.textContent = texto;
+    else if (btn) btn.textContent = texto;
+}
+
 async function calcular() {
     const btn = document.getElementById("btnCalcular");
     btn.disabled = true;
-    btn.textContent = "Calculando…";
+    setBtnLabel(btn, "Calculando…");
     try {
         const body = {
             concluidas: [...estado.concluidas],
+            excluidas: [...estado.excluidas],
             maxDisciplinasPorPeriodo: Number(document.getElementById("maxDisc").value),
             incluirOptativas: document.getElementById("incluirOptativas").checked,
             considerarHorarios: true,
@@ -698,14 +1019,14 @@ async function calcular() {
         alert("Erro ao calcular o plano: " + e.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "Calcular rota ótima";
+        setBtnLabel(btn, "Rota ótima");
     }
 }
 
 async function calcularProximoSemestre() {
     const btn = document.getElementById("btnProximoSemestre");
     btn.disabled = true;
-    btn.textContent = "Calculando…";
+    setBtnLabel(btn, "Calculando…");
     try {
         const body = {
             concluidas: [...estado.concluidas],
@@ -728,7 +1049,7 @@ async function calcularProximoSemestre() {
         alert("Erro ao calcular o próximo semestre: " + e.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "Calcular próximo semestre";
+        setBtnLabel(btn, "Próximo semestre");
     }
 }
 
@@ -752,11 +1073,21 @@ function renderPlano(plano, modo = "rota") {
             <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-0.5">${rotulo}</div>
         </div>`;
 
+    const p1 = (plano.periodos && plano.periodos[0]) ? plano.periodos[0].disciplinas : [];
+    const mensalidadeP1 = mensalidadeSemestre(p1);
+    const parcelas = custosConfig()?.parcelasMensais ?? 5;
+    const matricula = custosConfig()?.matricula ?? 1892;
+    const totalP1 = matricula + parcelas * mensalidadeP1;
+
     document.getElementById("resumo").innerHTML =
         metric(plano.totalPeriodos, "Períodos até formar") +
         metric(plano.totalDisciplinasRestantes, "Disciplinas restantes") +
-        metric(plano.cargaHorariaRestante + "h", "Carga horária restante") +
+        metric("~" + formatarBRL(mensalidadeP1), `Mensalidade 1º sem. (${parcelas}x)`) +
         metric(selo, "Qualidade");
+    const notaCusto = document.getElementById("resumoCustoP1");
+    if (notaCusto) {
+        notaCusto.textContent = `1º semestre: matrícula ${formatarBRL(matricula)} + ${parcelas}× ~${formatarBRL(mensalidadeP1)} ≈ ${formatarBRL(totalP1)} · sem bolsas/taxas.`;
+    }
 
     const periodos = document.getElementById("periodos");
     periodos.innerHTML = "";
@@ -768,9 +1099,13 @@ function renderPlano(plano, modo = "rota") {
         const col = document.createElement("div");
         col.className = "shrink-0 w-64 bg-slate-800/50 border border-slate-700 rounded-2xl p-3";
         col.style.borderTop = `4px solid ${c.bg}`;
+        const extraP1 = i === 0
+            ? `<div class="text-[10px] text-emerald-400/90 mb-3">~${formatarBRL(mensalidadeSemestre(p.disciplinas))}/mês</div>`
+            : "";
         col.innerHTML = `
             <h4 class="font-bold text-sm text-white">${p.numero}º período</h4>
-            <div class="text-[11px] text-slate-500 mb-3">${p.quantidade} disciplinas · ${p.cargaHorariaTotal}h</div>`;
+            <div class="text-[11px] text-slate-500 mb-1">${p.quantidade} disciplinas · ${p.cargaHorariaTotal}h</div>
+            ${extraP1 || `<div class="mb-3"></div>`}`;
 
         p.disciplinas.forEach(d => {
             mapaPeriodoDoNo[d.codigo] = i;
@@ -785,7 +1120,9 @@ function renderPlano(plano, modo = "rota") {
                 ? `<div class="mt-2 text-[10px] text-sky-300 bg-sky-500/10 border border-sky-500/25 rounded-lg px-2 py-1">
                      <span class="font-semibold">Turma ${d.turma}</span> · ${d.horarios.map(h => `${h.dia} ${h.inicio}–${h.fim}`).join(" · ")}
                    </div>`
-                : "";
+                : (diasOferta(d.codigo).length
+                    ? `<div class="mt-2">${chipsDiasHtml(d.codigo)}</div>`
+                    : "");
             el.innerHTML = `
                 <div class="text-[13px] font-semibold leading-tight text-slate-100">${d.nome}${tag}</div>
                 <div class="text-[10px] text-slate-500 mt-0.5">${d.codigo} · ${d.cargaHoraria}h${d.semipresencial ? " · semipresencial" : ""}</div>
@@ -909,6 +1246,10 @@ function renderSemestre() {
         metric(chSem + "h", "CH cobrada no SGA") +
         metric("~" + formatarBRL(mensalidade), `Mensalidade (${parcelas}x)`) +
         metric("~" + formatarBRL(total), "Total do semestre");
+    const notaCustoSem = document.getElementById("resumoCustoP1");
+    if (notaCustoSem) {
+        notaCustoSem.textContent = `Matrícula ${formatarBRL(matricula)} + ${parcelas}× ~${formatarBRL(mensalidade)} ≈ ${formatarBRL(total)} · sem bolsas/taxas.`;
+    }
 
     const periodos = document.getElementById("periodos");
     periodos.innerHTML = "";
@@ -1090,8 +1431,16 @@ function renderGrade(disciplinas, opts = {}) {
     const slotsVisiveis = GRADE_SLOTS.filter(s =>
         GRADE_DIAS.some(([dia]) => ocup[dia] && ocup[dia][s]));
 
-    let html = `<h4 class="font-bold text-base text-white mb-3">Grade do próximo semestre (1º período)</h4>
+    const semGrade = (disciplinas || []).filter(d => !(d.turma && d.horarios && d.horarios.length));
+    const notaSemGrade = (!interativo && semGrade.length)
+        ? `<p class="text-[11px] text-slate-500 mb-3">${semGrade.length} disciplina(s) do 1º período sem horário na oferta (não entram na grade): ${semGrade.map(d => d.nome).join("; ")}.</p>`
+        : "";
+
+    const mensalGrade = !interativo ? mensalidadeSemestre(disciplinas) : null;
+    let html = `<h4 class="font-bold text-base text-white mb-1">Grade do próximo semestre (1º período)</h4>
+        ${mensalGrade != null ? `<p class="text-[12px] text-emerald-400/90 mb-2">Mensalidade estimada: ~${formatarBRL(mensalGrade)}/mês · apenas este semestre</p>` : ""}
         ${interativo ? `<p class="text-[11px] text-slate-500 mb-3">Clique em uma aula para destacar a disciplina na lista (trocar ou remover).</p>` : ""}
+        ${notaSemGrade}
         <div class="grade-semanal-wrap custom-scroll">
         <div class="grade-semanal" style="--grade-rows:${slotsVisiveis.length}">`;
 
@@ -1164,36 +1513,113 @@ function coRequisitoDe(codigo) {
     return estado.curriculo.disciplinas.filter(d => d.coRequisitos.includes(codigo));
 }
 
+const ORDEM_DIA = { SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6, DOM: 7 };
+
+function ofertaDa(codigo) {
+    return estado.oferta?.disciplinas?.[String(codigo)] || null;
+}
+
+function diasOferta(codigo) {
+    const o = ofertaDa(codigo);
+    if (!o?.turmas?.length) return [];
+    const set = new Set();
+    for (const t of o.turmas) {
+        for (const h of t.horarios || []) {
+            if (h.dia) set.add(h.dia.toUpperCase());
+        }
+    }
+    return [...set].sort((a, b) => (ORDEM_DIA[a] || 99) - (ORDEM_DIA[b] || 99));
+}
+
+function horariosOfertaResumo(codigo) {
+    const o = ofertaDa(codigo);
+    if (!o?.turmas?.length) return [];
+    const vistos = new Set();
+    const slots = [];
+    for (const t of o.turmas) {
+        for (const h of t.horarios || []) {
+            const chave = `${h.dia}|${h.inicio}|${h.fim}`;
+            if (vistos.has(chave)) continue;
+            vistos.add(chave);
+            slots.push(h);
+        }
+    }
+    slots.sort((a, b) => (ORDEM_DIA[a.dia] || 99) - (ORDEM_DIA[b.dia] || 99) || String(a.inicio).localeCompare(b.inicio));
+    return slots;
+}
+
+function chipsDiasHtml(codigo) {
+    const dias = diasOferta(codigo);
+    if (!dias.length) {
+        return `<span class="text-[10px] text-slate-500">sem oferta neste semestre</span>`;
+    }
+    const slots = horariosOfertaResumo(codigo);
+    const title = slots.map(h => `${h.dia} ${h.inicio}–${h.fim}`).join(" · ");
+    return `<span class="flex flex-wrap gap-1" title="${title}">${
+        dias.map(d => `<span class="text-[9px] font-bold tracking-wide text-sky-200 bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.5 rounded-md">${d}</span>`).join("")
+    }</span>`;
+}
+
 function renderConsulta() {
     atualizarConsulta();
+}
+
+function requisitosCumpridos(d) {
+    return situacao(d).estado === "disponivel";
 }
 
 // Monta a lista apenas com disciplinas ainda não cursadas.
 function atualizarConsulta() {
     const cont = document.getElementById("listaConsulta");
     const vazio = document.getElementById("consultaVazio");
+    const filtroVazio = document.getElementById("consultaFiltroVazio");
     const termo = (document.getElementById("buscaConsulta")?.value || "").trim().toLowerCase();
+    const soLiberadas = !!document.getElementById("filtroRequisitosOk")?.checked;
 
     const restantes = estado.curriculo.disciplinas
         .filter(d => !estaConcluida(d.codigo))
         .sort((a, b) => (a.periodoSugerido - b.periodoSugerido) || a.nome.localeCompare(b.nome));
 
+    const liberadas = restantes.filter(requisitosCumpridos);
+    const base = soLiberadas ? liberadas : restantes;
     const filtradas = termo
-        ? restantes.filter(d => (d.nome + " " + d.codigo).toLowerCase().includes(termo))
-        : restantes;
+        ? base.filter(d => (d.nome + " " + d.codigo).toLowerCase().includes(termo))
+        : base;
 
-    document.getElementById("contadorRestantes").textContent = `${restantes.length} restantes`;
+    document.getElementById("contadorRestantes").textContent = soLiberadas
+        ? `${liberadas.length} liberada(s)`
+        : `${restantes.length} restantes`;
     vazio.classList.toggle("hidden", restantes.length > 0);
-    cont.classList.toggle("hidden", filtradas.length === 0 && restantes.length > 0);
+    if (filtroVazio) {
+        const semResultado = restantes.length > 0 && filtradas.length === 0;
+        filtroVazio.classList.toggle("hidden", !semResultado);
+        if (semResultado) {
+            const titulo = filtroVazio.querySelector("p.font-medium");
+            const sub = filtroVazio.querySelector("p.text-sm");
+            if (termo) {
+                if (titulo) titulo.textContent = "Nenhuma disciplina encontrada.";
+                if (sub) sub.textContent = "Ajuste a busca ou o filtro de requisitos.";
+            } else if (soLiberadas) {
+                if (titulo) titulo.textContent = "Nenhuma disciplina liberada agora.";
+                if (sub) sub.textContent = "Marque o que já fez ou desligue o filtro para ver o restante.";
+            } else {
+                if (titulo) titulo.textContent = "Nenhuma disciplina encontrada.";
+                if (sub) sub.textContent = "";
+            }
+        }
+    }
+    cont.classList.toggle("hidden", filtradas.length === 0);
 
     cont.innerHTML = filtradas.map(d => {
         const st = situacao(d);
+        const nTurmas = ofertaDa(d.codigo)?.turmas?.length || 0;
         return `<button type="button" data-cod="${d.codigo}"
             class="consulta-card w-full text-left rounded-xl border border-slate-700 bg-slate-800/50 hover:border-indigo-500 hover:bg-slate-800 transition px-3.5 py-2.5 flex items-center gap-3">
             <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${st.cor}" title="${st.rotulo}"></span>
             <span class="flex-1 min-w-0">
                 <span class="block text-[13px] font-semibold text-slate-100 leading-tight truncate">${d.nome}</span>
-                <span class="block text-[10px] text-slate-500 tabular-nums mt-0.5">${d.codigo} · ${d.cargaHoraria}h · ${d.periodoSugerido}º período</span>
+                <span class="block text-[10px] text-slate-500 tabular-nums mt-0.5">${d.codigo} · ${d.cargaHoraria}h · ${d.periodoSugerido}º período${nTurmas ? ` · ${nTurmas} turma(s)` : ""}</span>
+                <span class="mt-1.5 flex items-center gap-2">${chipsDiasHtml(d.codigo)}</span>
             </span>
             ${d.optativa ? '<span class="text-[9px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded-full shrink-0">opt</span>' : ""}
             <span class="text-slate-600 shrink-0">›</span>
@@ -1502,6 +1928,28 @@ function montarConteudoModal(codigo) {
             ${chBloco}
 
             ${custoBloco}
+
+            ${(() => {
+                const o = ofertaDa(d.codigo);
+                const semestre = estado.oferta?.semestre || "deste semestre";
+                if (!o?.turmas?.length) {
+                    return `<div class="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-3 text-[12px] text-slate-400">
+                        Sem turma casada na oferta ${semestre}.
+                    </div>`;
+                }
+                const turmasHtml = o.turmas.map(t => {
+                    const hs = (t.horarios || []).map(h => `${h.dia} ${h.inicio}–${h.fim}`).join(" · ") || "horário não informado";
+                    return `<div class="rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2">
+                        <div class="text-[11px] font-semibold text-sky-200">Turma ${t.codigo}</div>
+                        <div class="text-[11px] text-slate-300 mt-0.5">${hs}</div>
+                    </div>`;
+                }).join("");
+                return `<div>
+                    <h4 class="text-[13px] font-bold text-white">Horários neste semestre (${semestre})</h4>
+                    <p class="text-[11px] text-slate-500 mb-2">${o.turmas.length} turma(s) na oferta${o.exato ? "" : " · casamento aproximado de nome"}.</p>
+                    <div class="space-y-1.5">${turmasHtml}</div>
+                </div>`;
+            })()}
 
             <div class="border-t border-slate-800 pt-4">
                 <h3 class="text-sm font-bold text-white mb-3">O que você precisa para cursá-la</h3>

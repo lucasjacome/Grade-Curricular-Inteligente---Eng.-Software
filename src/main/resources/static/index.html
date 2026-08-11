@@ -17,79 +17,103 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="style.css?v=9"/>
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    <link rel="stylesheet" href="style.css?v=16"/>
 </head>
 <body class="h-screen flex flex-col bg-slate-950 text-slate-200 font-sans overflow-hidden">
 
 <!-- Header -->
-<header class="shrink-0 bg-slate-900 border-b border-slate-800">
-    <div class="px-5 py-3 flex items-center justify-between gap-4 flex-wrap">
-        <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 grid place-items-center font-extrabold tracking-wide shadow-lg shadow-indigo-950/50 text-white">
-                GCI
-            </div>
-            <div>
-                <h1 class="text-base font-bold leading-tight text-white">Grade Curricular Inteligente</h1>
-                <p id="subtitulo" class="text-xs text-slate-400">Carregando currículo…</p>
+<header class="app-header shrink-0">
+    <div class="hdr-inner">
+        <div class="hdr-brand">
+            <div class="hdr-logo" aria-hidden="true">GCI</div>
+            <div class="min-w-0">
+                <h1 class="hdr-title">Grade Curricular Inteligente</h1>
+                <p id="subtitulo" class="hdr-sub">Carregando currículo…</p>
             </div>
         </div>
 
-        <div class="flex items-end gap-4 flex-wrap">
-            <label class="flex flex-col gap-1 text-[11px] font-medium text-slate-400">
-                Grade curricular
-                <select id="selCurriculo"
-                        class="min-w-[220px] rounded-lg px-3 py-2 text-sm bg-slate-800 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
-                    <option value="">Carregando…</option>
-                </select>
-            </label>
-            <label class="flex flex-col gap-1 text-[11px] font-medium text-slate-400">
-                Máx. disciplinas/período
-                <input type="number" id="maxDisc" min="1" max="15" value="6"
-                       class="w-20 rounded-lg px-3 py-2 text-sm bg-slate-800 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"/>
-            </label>
-            <label class="flex flex-col gap-1 text-[11px] font-medium text-slate-400">
-                Até quanto pagar/mês (R$)
-                <input type="number" id="orcamentoMensal" min="0" step="50" placeholder="sem limite"
-                       class="w-28 rounded-lg px-3 py-2 text-sm bg-slate-800 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-slate-500"
-                       title="Teto da mensalidade estimada (sem matrícula). Deixe vazio para não limitar."/>
-            </label>
-            <label class="flex items-center gap-2 text-xs font-medium text-slate-300 pb-2 cursor-pointer">
-                <input type="checkbox" id="incluirOptativas" checked class="w-4 h-4 rounded accent-indigo-500"/>
-                Incluir optativas
-            </label>
-            <div class="relative pb-0.5">
-                <button type="button" id="btnFiltroExcluir"
-                        class="bg-slate-800 hover:bg-slate-700 border border-slate-600 transition-colors px-4 py-2.5 rounded-xl font-semibold text-sm text-slate-200">
-                    Filtrar matérias
-                    <span id="badgeExcluidas" class="hidden ml-1.5 text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded-full">0</span>
-                </button>
-                <div id="painelExcluir" class="hidden absolute right-0 top-full mt-2 z-40 w-80 max-h-96 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/50 flex flex-col">
-                    <div class="p-3 border-b border-slate-800">
-                        <div class="text-sm font-bold text-white">Não incluir no próximo semestre</div>
-                        <p class="text-[11px] text-slate-500 mt-0.5">Adicione matérias que o calculador deve ignorar.</p>
-                        <input id="buscaExcluir" type="text" placeholder="Buscar disciplina…"
-                               class="mt-2 w-full text-sm rounded-lg bg-slate-800 border border-slate-700 text-slate-100 px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none placeholder:text-slate-500"/>
-                    </div>
-                    <div id="listaExcluirCandidatas" class="flex-1 overflow-y-auto p-2 space-y-1 custom-scroll max-h-48"></div>
-                    <div class="p-3 border-t border-slate-800">
-                        <div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-1.5">Excluídas agora</div>
-                        <div id="chipsExcluidas" class="flex flex-wrap gap-1.5 min-h-[28px]"></div>
-                        <button type="button" id="btnLimparExcluidas"
-                                class="mt-2 text-[11px] text-rose-400 hover:text-rose-300 font-medium">Limpar filtro</button>
+        <div class="hdr-toolbar">
+            <div class="hdr-group">
+                <div class="hdr-field">
+                    <span class="hdr-label">Grade</span>
+                    <div class="hdr-dd" id="selCurriculo">
+                        <button type="button" id="btnSelCurriculo" class="hdr-dd-btn" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hdr-dd-copy">
+                                <span id="selCurriculoTitulo" class="hdr-dd-title">Carregando…</span>
+                                <span id="selCurriculoCodigo" class="hdr-dd-code"></span>
+                            </span>
+                            <svg class="hdr-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </button>
+                        <div id="menuCurriculo" class="hdr-dd-menu hidden" role="listbox"></div>
                     </div>
                 </div>
+
+                <label class="hdr-field">
+                    <span class="hdr-label">Máx. / período</span>
+                    <span class="hdr-control-wrap hdr-control-wrap--num">
+                        <svg class="hdr-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v6H4zM14 16h6v6h-6z"/>
+                        </svg>
+                        <input type="number" id="maxDisc" min="1" max="15" value="6" class="hdr-control hdr-input hdr-input--sm"/>
+                    </span>
+                </label>
+
+                <label class="hdr-field">
+                    <span class="hdr-label">Pagar / mês</span>
+                    <span class="hdr-control-wrap hdr-control-wrap--money">
+                        <span class="hdr-prefix">R$</span>
+                        <input type="number" id="orcamentoMensal" min="0" step="50" placeholder="livre"
+                               class="hdr-control hdr-input hdr-input--money"
+                               title="Teto da mensalidade estimada (sem matrícula). Deixe vazio para não limitar."/>
+                    </span>
+                </label>
+
+                <label class="hdr-switch" title="Incluir optativas no plano">
+                    <input type="checkbox" id="incluirOptativas" checked class="hdr-switch-input"/>
+                    <span class="hdr-switch-ui" aria-hidden="true"></span>
+                    <span class="hdr-switch-text">Optativas</span>
+                </label>
             </div>
-            <button id="btnProximoSemestre"
-                    class="bg-emerald-600 hover:bg-emerald-500 transition-colors px-5 py-2.5 rounded-xl font-semibold text-sm text-white shadow-lg shadow-emerald-950/50 disabled:opacity-60 disabled:cursor-wait">
-                Calcular próximo semestre
-            </button>
-            <button id="btnCalcular"
-                    class="bg-indigo-600 hover:bg-indigo-500 transition-colors px-5 py-2.5 rounded-xl font-semibold text-sm text-white shadow-lg shadow-indigo-950/50 disabled:opacity-60 disabled:cursor-wait">
-                Calcular rota ótima
-            </button>
+
+            <div class="hdr-actions">
+                <div class="relative">
+                    <button type="button" id="btnFiltroExcluir" class="hdr-btn hdr-btn-ghost">
+                        <svg class="hdr-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10M10 18h4"/>
+                        </svg>
+                        Filtrar
+                        <span id="badgeExcluidas" class="hdr-badge hidden">0</span>
+                    </button>
+                    <div id="painelExcluir" class="hdr-panel hidden">
+                        <div class="hdr-panel-head">
+                            <div class="text-sm font-bold text-white">Não incluir no plano</div>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Ignoradas no próximo semestre e na rota ótima.</p>
+                            <input id="buscaExcluir" type="text" placeholder="Buscar disciplina…" class="hdr-panel-search"/>
+                        </div>
+                        <div id="listaExcluirCandidatas" class="flex-1 overflow-y-auto p-2 space-y-1 custom-scroll max-h-48"></div>
+                        <div class="hdr-panel-foot">
+                            <div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-1.5">Excluídas agora</div>
+                            <div id="chipsExcluidas" class="flex flex-wrap gap-1.5 min-h-[28px]"></div>
+                            <button type="button" id="btnLimparExcluidas" class="hdr-link-danger">Limpar filtro</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btnProximoSemestre" class="hdr-btn hdr-btn-emerald">
+                    <svg class="hdr-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M5 11h14M6 5h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z"/>
+                    </svg>
+                    <span class="hdr-btn-label">Próximo semestre</span>
+                </button>
+                <button id="btnCalcular" class="hdr-btn hdr-btn-indigo">
+                    <svg class="hdr-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                    </svg>
+                    <span class="hdr-btn-label">Rota ótima</span>
+                </button>
+            </div>
         </div>
     </div>
 </header>
@@ -137,16 +161,28 @@
         <div class="flex-1 min-h-0 relative">
         <!-- Tab: Mapa -->
         <div id="tab-mapa" class="absolute inset-0">
-            <div class="absolute z-10 top-3 left-3 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-3 py-2 shadow-lg text-[11px] text-slate-300 flex flex-wrap gap-x-4 gap-y-1 max-w-[95%]">
-                <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></i>Concluída</span>
-                <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-amber-500 inline-block"></i>Gargalo (destrava muitas)</span>
-                <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-violet-500 inline-block"></i>Optativa</span>
-                <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-slate-400 inline-block"></i>Comum</span>
-                <span class="flex items-center gap-1.5"><i class="w-5 border-t-2 border-slate-400 inline-block"></i>Pré-requisito</span>
-                <span class="flex items-center gap-1.5"><i class="w-5 border-t-2 border-dashed border-amber-400 inline-block"></i>Co-requisito</span>
+            <div class="absolute z-10 top-3 left-3 right-3 flex items-start justify-between gap-3 pointer-events-none">
+                <div class="bg-slate-900/95 border border-slate-700 rounded-xl px-3 py-2 shadow-lg text-[11px] text-slate-300 flex flex-wrap gap-x-4 gap-y-1 max-w-[min(100%,52rem)] pointer-events-auto">
+                    <span class="text-slate-400 font-semibold">Colunas = período da grade</span>
+                    <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></i>Concluída</span>
+                    <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-amber-500 inline-block"></i>Gargalo</span>
+                    <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-violet-500 inline-block"></i>Optativa</span>
+                    <span class="flex items-center gap-1.5"><i class="w-5 border-t-2 border-slate-400 inline-block"></i>Pré</span>
+                    <span class="flex items-center gap-1.5"><i class="w-5 border-t-2 border-dashed border-amber-400 inline-block"></i>Co-req</span>
+                </div>
+                <button type="button" id="btnRecentrarMapa" class="pointer-events-auto shrink-0 text-[11px] font-semibold text-slate-200 bg-slate-900/90 border border-slate-700 hover:border-indigo-400 rounded-xl px-3 py-2 shadow-lg">
+                    Recentrar
+                </button>
             </div>
-            <div id="infoNo" class="absolute z-10 bottom-3 left-3 hidden bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-3 text-xs text-slate-300 max-w-xs"></div>
-            <div id="cy" class="w-full h-full"></div>
+            <div id="infoNo" class="absolute z-10 bottom-3 left-3 hidden bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-3 text-xs text-slate-300 max-w-xs pointer-events-none"></div>
+            <div id="mapaScroll" class="mapa-scroll">
+                <div id="mapaZoomBox" class="mapa-zoom-box">
+                    <div id="mapaCena" class="mapa-cena">
+                        <svg id="mapaSvg" class="mapa-svg" aria-hidden="true"></svg>
+                        <div id="mapaCards" class="mapa-cards"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Tab: Plano -->
@@ -159,7 +195,8 @@
                 </div>
             </div>
             <div id="planoConteudo" class="hidden">
-                <div id="resumo" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5"></div>
+                <div id="resumo" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2"></div>
+                <p id="resumoCustoP1" class="text-[11px] text-slate-500 mb-5"></p>
                 <div id="gradeSemanal" class="mb-6"></div>
                 <div id="periodos" class="flex gap-4 overflow-x-auto pb-3 custom-scroll"></div>
                 <div id="avisos" class="mt-4 space-y-1"></div>
@@ -173,18 +210,32 @@
                     <div>
                         <h3 class="text-lg font-bold text-white">Disciplinas restantes</h3>
                         <p class="text-sm text-slate-400 mt-0.5">
-                            Todas as disciplinas que você <b class="text-slate-300">ainda não cursou</b>.
-                            Clique numa delas para ver todos os detalhes no pop-up.
+                            Todas as disciplinas que você <b class="text-slate-300">ainda não cursou</b>,
+                            com os dias da oferta deste semestre.
+                            Clique numa delas para ver os detalhes.
                         </p>
                     </div>
                     <span id="contadorRestantes" class="text-xs font-semibold text-slate-400 bg-slate-800 border border-slate-700 rounded-full px-3 py-1 tabular-nums shrink-0">0 restantes</span>
                 </div>
                 <input id="buscaConsulta" type="text" placeholder="Buscar por nome ou código…"
                        class="w-full text-sm rounded-lg bg-slate-800 border border-slate-700 text-slate-100 px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-slate-500"/>
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <label class="hdr-switch" title="Mostra só disciplinas cujo pré-requisito e carga horária mínima já foram cumpridos">
+                        <input type="checkbox" id="filtroRequisitosOk" class="hdr-switch-input"/>
+                        <span class="hdr-switch-ui" aria-hidden="true"></span>
+                        <span class="hdr-switch-text">Só com requisitos cumpridos</span>
+                    </label>
+                    <span class="text-[11px] text-slate-500">Pré-requisitos e CH mínima. Co-requisitos podem ser feitos juntos.</span>
+                </div>
                 <div id="listaConsulta" class="mt-4 space-y-1.5"></div>
                 <div id="consultaVazio" class="hidden text-center text-slate-500 py-12">
                     <div class="text-4xl mb-2">🎉</div>
                     <p class="font-medium text-slate-300">Você já cursou todas as disciplinas!</p>
+                </div>
+                <div id="consultaFiltroVazio" class="hidden text-center text-slate-500 py-12">
+                    <div class="text-4xl mb-2">🔓</div>
+                    <p class="font-medium text-slate-300">Nenhuma disciplina liberada agora.</p>
+                    <p class="text-sm mt-1">Marque o que já fez ou desligue o filtro para ver o restante.</p>
                 </div>
             </div>
         </div>
@@ -202,6 +253,6 @@
     </div>
 </div>
 
-<script src="app.js?v=22"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>
