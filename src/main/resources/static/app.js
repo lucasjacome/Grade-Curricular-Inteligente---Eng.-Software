@@ -800,7 +800,7 @@ function renderGrafo() {
     recentrarMapa();
 }
 
-const FOCO_MAPA_MS = 800;
+const FOCO_MAPA_MS = 650;
 const MAPA_ZOOM_MIN = 0.4;
 const MAPA_ZOOM_MAX = 2.4;
 let focoMapaTimer = null;
