@@ -37,6 +37,37 @@
 .disc-card.concluida .check { background: #10b981; border-color: #10b981; }
 .disc-card .nome { color: #e2e8f0; }
 .disc-card.concluida .nome { color: #6ee7b7; }
+.disc-card.bloqueada {
+    opacity: 0.62;
+    cursor: not-allowed;
+}
+.disc-card.bloqueada:hover {
+    border-color: #1e293b;
+    background: #0f172a;
+}
+.disc-card.bloqueada.concluida {
+    opacity: 0.88;
+}
+.disc-card.bloqueada.concluida:hover {
+    border-color: #10b981;
+    background: #052e23;
+}
+.disc-card .check.is-lock {
+    border-style: dashed;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 10px;
+}
+.disc-card .motivo-bloqueio {
+    display: none;
+    font-size: 10px;
+    color: #fbbf24;
+    line-height: 1.3;
+    margin-top: 3px;
+}
+.disc-card.bloqueada .motivo-bloqueio {
+    display: block;
+}
 
 /* Pop-up de detalhes da disciplina */
 .modal-overlay {

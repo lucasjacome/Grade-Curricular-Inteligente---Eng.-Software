@@ -17,7 +17,7 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="style.css?v=8"/>
+    <link rel="stylesheet" href="style.css?v=9"/>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
@@ -49,6 +49,12 @@
                 Máx. disciplinas/período
                 <input type="number" id="maxDisc" min="1" max="15" value="6"
                        class="w-20 rounded-lg px-3 py-2 text-sm bg-slate-800 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"/>
+            </label>
+            <label class="flex flex-col gap-1 text-[11px] font-medium text-slate-400">
+                Até quanto pagar/mês (R$)
+                <input type="number" id="orcamentoMensal" min="0" step="50" placeholder="sem limite"
+                       class="w-28 rounded-lg px-3 py-2 text-sm bg-slate-800 border border-slate-700 text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none placeholder:text-slate-500"
+                       title="Teto da mensalidade estimada (sem matrícula). Deixe vazio para não limitar."/>
             </label>
             <label class="flex items-center gap-2 text-xs font-medium text-slate-300 pb-2 cursor-pointer">
                 <input type="checkbox" id="incluirOptativas" checked class="w-4 h-4 rounded accent-indigo-500"/>
@@ -96,7 +102,7 @@
                 <h2 class="font-bold text-sm text-white">Minhas disciplinas</h2>
                 <button id="btnLimpar" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Limpar</button>
             </div>
-            <p class="text-[11px] text-slate-500 mt-0.5">Clique para marcar o que já concluiu.</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Clique para marcar o que já concluiu. Sem o pré ou o co-requisito, a matéria fica bloqueada.</p>
             <div class="mt-3 flex items-center gap-2">
                 <div class="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
                     <div id="barraProgresso" class="h-full bg-emerald-500 transition-all" style="width:0%"></div>
@@ -196,6 +202,6 @@
     </div>
 </div>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

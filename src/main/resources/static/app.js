@@ -2,6 +2,7 @@ const API = "";
 const STORAGE_KEY_PREFIX = "gci.concluidas.v1.";
 const STORAGE_EXCLUIR_PREFIX = "gci.excluidas.v1.";
 const STORAGE_CURRICULO = "gci.curriculo.codigo";
+const STORAGE_ORCAMENTO = "gci.orcamentoMensal";
 
 function formatarBRL(v) {
     return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -46,6 +47,29 @@ function totalSemestre(itens) {
     return matricula + parcelas * mensalidadeSemestre(itens);
 }
 
+/** Lê o teto de mensalidade do input; {@code null} = sem limite. */
+function orcamentoMensalMax() {
+    const el = document.getElementById("orcamentoMensal");
+    const raw = el?.value?.trim();
+    if (!raw) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return n;
+}
+
+function persistirOrcamento() {
+    const v = document.getElementById("orcamentoMensal")?.value?.trim() ?? "";
+    if (v) localStorage.setItem(STORAGE_ORCAMENTO, v);
+    else localStorage.removeItem(STORAGE_ORCAMENTO);
+}
+
+function restaurarOrcamento() {
+    const el = document.getElementById("orcamentoMensal");
+    if (!el) return;
+    const salvo = localStorage.getItem(STORAGE_ORCAMENTO);
+    if (salvo != null) el.value = salvo;
+}
+
 function textoChCobranca(d) {
     const full = disciplinaParaCusto(d);
     if (!full) return "";
@@ -81,6 +105,7 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
     if (window.cytoscapeDagre) cytoscape.use(window.cytoscapeDagre);
 
+    restaurarOrcamento();
     estado.curriculos = await fetch(`${API}/api/curriculos`).then(r => r.json());
     popularSeletorCurriculo();
     await carregarCurriculoAtivo();
@@ -151,6 +176,8 @@ function ligarEventos() {
     document.getElementById("busca").addEventListener("input", filtrarBusca);
     document.getElementById("buscaConsulta").addEventListener("input", filtrarConsulta);
     document.getElementById("selCurriculo").addEventListener("change", e => trocarCurriculo(e.target.value));
+    document.getElementById("orcamentoMensal")?.addEventListener("change", persistirOrcamento);
+    document.getElementById("orcamentoMensal")?.addEventListener("input", persistirOrcamento);
     document.getElementById("btnFiltroExcluir").addEventListener("click", e => {
         e.stopPropagation();
         document.getElementById("painelExcluir").classList.toggle("hidden");
@@ -340,7 +367,6 @@ function renderChecklist() {
             const card = document.createElement("button");
             card.type = "button";
             card.className = "disc-card";
-            if (estaConcluida(d.codigo)) card.classList.add("concluida");
             card.dataset.cod = d.codigo;
             card.dataset.busca = (d.nome + " " + d.codigo).toLowerCase();
             card.innerHTML = `
@@ -348,6 +374,7 @@ function renderChecklist() {
                 <span class="flex-1 min-w-0">
                     <span class="nome block text-[13px] font-medium leading-tight truncate">${d.nome}</span>
                     <span class="block text-[10px] text-slate-500 tabular-nums">${d.codigo} · ${d.cargaHoraria}h</span>
+                    <span class="motivo-bloqueio"></span>
                 </span>
                 ${d.optativa ? '<span class="text-[9px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded-full">opt</span>' : ""}`;
             card.addEventListener("click", () => toggleConcluida(d.codigo));
@@ -357,6 +384,71 @@ function renderChecklist() {
         grupo.appendChild(lista);
         container.appendChild(grupo);
     });
+    atualizarEstadoCards();
+}
+
+/** Códigos de pré/co-requisito que existem neste currículo. */
+function depsReais(lista) {
+    return (lista || []).filter(c => disciplinaDe(c));
+}
+
+/** Concluídas que exigem esta disciplina como pré ou co-requisito. */
+function dependentesConcluidasDe(codigo) {
+    codigo = String(codigo);
+    return (estado.curriculo?.disciplinas || []).filter(d =>
+        estaConcluida(d.codigo) &&
+        d.codigo !== codigo &&
+        (d.preRequisitos.includes(codigo) || d.coRequisitos.includes(codigo))
+    );
+}
+
+/**
+ * Por que a disciplina não pode ser marcada/desmarcada agora.
+ * Marcar: precisa dos pré e dos co-requisitos já concluídos.
+ * Desmarcar: bloqueada se outra concluída ainda depende dela.
+ */
+function motivoBloqueioChecklist(codigo) {
+    codigo = String(codigo);
+    const d = disciplinaDe(codigo);
+    if (!d) return null;
+
+    if (estaConcluida(codigo)) {
+        const deps = dependentesConcluidasDe(codigo);
+        if (!deps.length) return null;
+        return "Desmarque antes: " + deps.map(x => x.nome).join(", ");
+    }
+
+    const preFalta = depsReais(d.preRequisitos).filter(c => !estaConcluida(c));
+    if (preFalta.length) {
+        return "Falta pré-requisito: " + preFalta.map(nomeDe).join(", ");
+    }
+
+    const coFalta = depsReais(d.coRequisitos).filter(c => !estaConcluida(c));
+    if (coFalta.length) {
+        return "Falta co-requisito: " + coFalta.map(nomeDe).join(", ");
+    }
+
+    return null;
+}
+
+function atualizarEstadoCards() {
+    if (!estado.curriculo) return;
+    for (const d of estado.curriculo.disciplinas) {
+        const card = estado.cardByCode[d.codigo];
+        if (!card) continue;
+        const feita = estaConcluida(d.codigo);
+        const bloqueio = motivoBloqueioChecklist(d.codigo);
+        card.classList.toggle("concluida", feita);
+        card.classList.toggle("bloqueada", !!bloqueio);
+        card.title = bloqueio || (feita ? "Clique para desmarcar" : "Clique para marcar como concluída");
+        const check = card.querySelector(".check");
+        if (check) {
+            check.classList.toggle("is-lock", !!(bloqueio && !feita));
+            check.textContent = bloqueio && !feita ? "✕" : "✓";
+        }
+        const hint = card.querySelector(".motivo-bloqueio");
+        if (hint) hint.textContent = bloqueio || "";
+    }
 }
 
 function filtrarBusca(e) {
@@ -370,12 +462,13 @@ function filtrarBusca(e) {
 
 function toggleConcluida(codigo) {
     codigo = String(codigo);
+    const bloqueio = motivoBloqueioChecklist(codigo);
+    if (bloqueio) return;
+
     if (estaConcluida(codigo)) estado.concluidas.delete(codigo);
     else estado.concluidas.add(codigo);
 
-    const card = estado.cardByCode[codigo];
-    if (card) card.classList.toggle("concluida", estaConcluida(codigo));
-
+    atualizarEstadoCards();
     salvarConcluidas();
     pintarGrafoBase();
     atualizarProgresso();
@@ -392,7 +485,7 @@ function atualizarProgresso() {
 
 function limpar() {
     estado.concluidas.clear();
-    Object.values(estado.cardByCode).forEach(c => c.classList.remove("concluida"));
+    atualizarEstadoCards();
     salvarConcluidas();
     pintarGrafoBase();
     atualizarProgresso();
@@ -487,7 +580,14 @@ function renderGrafo() {
         layout: layoutDagre(),
     });
 
-    estado.cy.on("tap", "node", evt => toggleConcluida(evt.target.id()));
+    estado.cy.on("tap", "node", evt => {
+        const id = evt.target.id();
+        if (motivoBloqueioChecklist(id)) {
+            mostrarInfo(evt.target);
+            return;
+        }
+        toggleConcluida(id);
+    });
     estado.cy.on("mouseover", "node", evt => mostrarInfo(evt.target));
     estado.cy.on("mouseout", "node", () => document.getElementById("infoNo").classList.add("hidden"));
 
@@ -505,6 +605,10 @@ function mostrarInfo(node) {
     const d = estado.curriculo.disciplinas.find(x => x.codigo === node.id());
     if (!d) return;
     const nome = c => (estado.curriculo.disciplinas.find(x => x.codigo === c)?.nome ?? c);
+    const bloqueio = motivoBloqueioChecklist(d.codigo);
+    const dica = bloqueio
+        ? `<div class="mt-1 text-[10px] text-amber-300">${bloqueio}</div>`
+        : `<div class="mt-1 text-[10px] text-slate-500">${estaConcluida(d.codigo) ? "Clique para desmarcar" : "Clique para marcar como concluída"}</div>`;
     const box = document.getElementById("infoNo");
     box.innerHTML = `
         <div class="font-bold text-[13px] mb-1 text-white">${d.nome}</div>
@@ -512,7 +616,7 @@ function mostrarInfo(node) {
         <div><span class="text-slate-500">Pré-requisitos:</span> ${d.preRequisitos.map(nome).join(", ") || "nenhum"}</div>
         <div><span class="text-slate-500">Co-requisitos:</span> ${d.coRequisitos.map(nome).join(", ") || "nenhum"}</div>
         <div class="mt-1 text-amber-400 font-semibold">Destrava ${node.data("destrava")} disciplina(s)</div>
-        <div class="mt-1 text-[10px] text-slate-500">Clique para marcar como concluída</div>`;
+        ${dica}`;
     box.classList.remove("hidden");
 }
 
@@ -527,9 +631,17 @@ function pintarGrafoBase() {
     if (!estado.cy) return;
     estado.cy.batch(() => {
         estado.cy.nodes().forEach(n => {
-            const c = COR[categoria(n)];
+            const feita = estaConcluida(n.id());
+            const bloqueada = !!motivoBloqueioChecklist(n.id()) && !feita;
+            const c = bloqueada
+                ? { bg: "#334155", border: "#1e293b" }
+                : COR[categoria(n)];
             n.removeClass("apagado");
-            n.style({ "background-color": c.bg, "border-color": c.border });
+            n.style({
+                "background-color": c.bg,
+                "border-color": c.border,
+                "opacity": bloqueada ? 0.38 : 1,
+            });
         });
     });
 }
@@ -547,11 +659,11 @@ function pintarGrafoPorPlano(mapaPeriodoDoNo, totalPeriodos) {
             const id = n.id();
             if (estaConcluida(id)) {
                 n.removeClass("apagado");
-                n.style({ "background-color": COR.concluida.bg, "border-color": COR.concluida.border });
+                n.style({ "background-color": COR.concluida.bg, "border-color": COR.concluida.border, "opacity": 1 });
             } else if (id in mapaPeriodoDoNo) {
                 const c = corPorPeriodo(mapaPeriodoDoNo[id], totalPeriodos);
                 n.removeClass("apagado");
-                n.style({ "background-color": c.bg, "border-color": c.border });
+                n.style({ "background-color": c.bg, "border-color": c.border, "opacity": 1 });
             } else {
                 n.addClass("apagado");
             }
@@ -572,6 +684,7 @@ async function calcular() {
             incluirOptativas: document.getElementById("incluirOptativas").checked,
             considerarHorarios: true,
             codigoCurriculo: estado.codigoCurriculo,
+            orcamentoMensalMax: orcamentoMensalMax(),
         };
         const plano = await fetch(`${API}/api/plano`, {
             method: "POST",
@@ -601,6 +714,7 @@ async function calcularProximoSemestre() {
             incluirOptativas: document.getElementById("incluirOptativas").checked,
             considerarHorarios: true,
             codigoCurriculo: estado.codigoCurriculo,
+            orcamentoMensalMax: orcamentoMensalMax(),
         };
         const plano = await fetch(`${API}/api/plano/proximo-semestre`, {
             method: "POST",
@@ -788,6 +902,8 @@ function renderSemestre() {
     const total = totalSemestre(atuais);
     const parcelas = custosConfig()?.parcelasMensais ?? 5;
     const matricula = custosConfig()?.matricula ?? 1892;
+    const teto = orcamentoMensalMax();
+    const acimaDoTeto = teto != null && mensalidade > teto + 0.005;
     document.getElementById("resumo").innerHTML =
         metric(atuais.length, "Disciplinas no próximo semestre") +
         metric(chSem + "h", "CH cobrada no SGA") +
@@ -799,9 +915,17 @@ function renderSemestre() {
     const col = document.createElement("div");
     col.className = "shrink-0 w-80 bg-slate-800/50 border border-slate-700 rounded-2xl p-3";
     col.style.borderTop = `4px solid ${COR.concluida.bg}`;
+    const avisoOrcamento = acimaDoTeto
+        ? `<div class="mb-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
+             Mensalidade ~${formatarBRL(mensalidade)} acima do teto de ${formatarBRL(teto)}. Remova disciplinas ou recalcule.
+           </div>`
+        : (teto != null
+            ? `<div class="mb-2 text-[10px] text-slate-500">Teto mensal: ${formatarBRL(teto)}</div>`
+            : "");
     col.innerHTML = `
         <h4 class="font-bold text-sm text-white">Próximo semestre</h4>
         <div class="text-[11px] text-slate-500 mb-1">${atuais.length} disciplinas · ${chSem}h cobradas · ${gargalos} gargalo(s) · ${selo}</div>
+        ${avisoOrcamento}
         <div class="text-[10px] text-slate-500 mb-3">Matrícula ${formatarBRL(matricula)} + ${parcelas}× ~${formatarBRL(mensalidade)} · sem bolsas/taxas.<br>Troque no seletor (mesmo horário) ou remova o que não quiser.</div>`;
 
     if (!ativos.length) {

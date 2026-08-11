@@ -1,5 +1,6 @@
 package com.pucminas.gradeinteligente.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
@@ -14,6 +15,7 @@ import java.util.List;
  * @param considerarHorarios       se a oferta/horários entram no modelo
  * @param codigoCurriculo          código da grade (37203 / 372)
  * @param excluidas                códigos a ignorar no próximo semestre (filtro do usuário)
+ * @param orcamentoMensalMax       teto de mensalidade estimada (R$); {@code null} = sem limite
  */
 public record PlanoRequest(
         List<String> concluidas,
@@ -21,7 +23,8 @@ public record PlanoRequest(
         Boolean incluirOptativas,
         Boolean considerarHorarios,
         String codigoCurriculo,
-        List<String> excluidas
+        List<String> excluidas,
+        @DecimalMin("0.0") Double orcamentoMensalMax
 ) {
     public PlanoRequest {
         concluidas = concluidas == null ? List.of() : concluidas;
@@ -38,5 +41,10 @@ public record PlanoRequest(
 
     public boolean considerarHorariosOrDefault() {
         return considerarHorarios == null || considerarHorarios;
+    }
+
+    /** {@code true} quando o usuário informou um teto de mensalidade. */
+    public boolean temOrcamentoMensal() {
+        return orcamentoMensalMax != null && orcamentoMensalMax >= 0;
     }
 }

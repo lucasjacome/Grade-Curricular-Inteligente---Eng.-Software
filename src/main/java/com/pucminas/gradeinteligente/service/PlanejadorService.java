@@ -7,6 +7,7 @@ import com.google.ortools.sat.IntVar;
 import com.google.ortools.sat.LinearExpr;
 import com.google.ortools.sat.LinearExprBuilder;
 import com.google.ortools.sat.Literal;
+import com.pucminas.gradeinteligente.domain.Custos;
 import com.pucminas.gradeinteligente.domain.Curriculo;
 import com.pucminas.gradeinteligente.domain.Disciplina;
 import com.pucminas.gradeinteligente.domain.Turma;
@@ -39,6 +40,8 @@ import java.util.TreeMap;
  *   <li>Pré-requisito p de c ⇒ {@code termo[p] < termo[c]} (ou p já concluída = termo 0).</li>
  *   <li>Co-requisito x de c ⇒ {@code termo[x] <= termo[c]} (mesmo período ou antes).</li>
  *   <li>Capacidade: em cada período, no máximo {@code maxDisciplinas} disciplinas.</li>
+ *   <li>Orçamento mensal (opcional): em cada período, a soma das mensalidades estimadas
+ *       das disciplinas não pode ultrapassar o teto informado.</li>
  *   <li>Carga horária mínima (ex.: 1.800h): só libera após acumular a CH exigida.</li>
  *   <li>Turmas/horários: para o 1º período (próximo semestre), o solver escolhe uma turma
  *       de cada disciplina de forma que não haja choque de horário.</li>
@@ -133,6 +136,7 @@ public class PlanejadorService {
         }
 
         aplicarCapacidade(model, termo, horizonte, maxDisciplinas);
+        aplicarOrcamentoMensal(model, termo, horizonte, pendentes, curriculo.custos(), request, avisos);
 
         // Contagem de disciplinas no 1º período (empate após minimizar o makespan).
         List<Literal> noPrimeiroPeriodo = new ArrayList<>();
@@ -198,9 +202,13 @@ public class PlanejadorService {
         CpSolverStatus status = solver.solve(model);
 
         if (status != CpSolverStatus.OPTIMAL && status != CpSolverStatus.FEASIBLE) {
+            String motivo = request.temOrcamentoMensal()
+                    ? "Não foi possível montar um plano viável com o orçamento mensal informado. "
+                    + "Aumente o teto ou reduza a carga por período."
+                    : "Não foi possível montar um plano viável. "
+                    + "Verifique as disciplinas concluídas e a capacidade por período.";
             return new PlanoResponse("INVIAVEL", 0, pendentes.size(), chRestante, false,
-                    List.of(), List.of("Não foi possível montar um plano viável. "
-                    + "Verifique as disciplinas concluídas e a capacidade por período."));
+                    List.of(), List.of(motivo));
         }
 
         boolean otimo = status == CpSolverStatus.OPTIMAL;
@@ -216,9 +224,10 @@ public class PlanejadorService {
     /**
      * Planeja <b>apenas o próximo semestre</b>: escolhe o maior conjunto possível de
      * disciplinas que o aluno já pode cursar agora (todos os pré-requisitos concluídos e
-     * carga horária mínima cumprida), respeitando a capacidade máxima por período e evitando
-     * choque de horário entre as turmas da oferta atual. Entre os empates, prioriza os
-     * gargalos (disciplinas que destravam mais o currículo).
+     * carga horária mínima cumprida), respeitando a capacidade máxima por período, o
+     * orçamento mensal (se informado) e evitando choque de horário entre as turmas da
+     * oferta atual. Entre os empates, prioriza os gargalos (disciplinas que destravam
+     * mais o currículo).
      *
      * <p>Faz sentido como um cálculo separado da rota completa porque os horários mudam a cada
      * semestre — só temos como garantir a grade do próximo semestre.
@@ -378,6 +387,9 @@ public class PlanejadorService {
         // Capacidade: no máximo maxDisciplinas no semestre.
         model.addLessOrEqual(LinearExpr.sum(cursar.values().toArray(new Literal[0])), maxDisciplinas);
 
+        // Orçamento mensal: soma das mensalidades estimadas ≤ teto (se informado).
+        aplicarOrcamentoMensalProximoSemestre(model, cursar, elegiveis, curriculo.custos(), request, avisos);
+
         // Objetivo: 1) maximizar quantidade de disciplinas; 2) priorizar gargalos.
         long somaPrioridades = 0;
         for (Disciplina d : elegiveis) somaPrioridades += grafoService.prioridade(codigoCurriculo, d.codigo());
@@ -401,8 +413,11 @@ public class PlanejadorService {
         CpSolverStatus status = solver.solve(model);
 
         if (status != CpSolverStatus.OPTIMAL && status != CpSolverStatus.FEASIBLE) {
+            String motivo = request.temOrcamentoMensal()
+                    ? "Não foi possível montar o próximo semestre com o orçamento mensal informado."
+                    : "Não foi possível montar o próximo semestre.";
             return new PlanoResponse("INVIAVEL", 0, totalPendentes, chRestante, false,
-                    List.of(), List.of("Não foi possível montar o próximo semestre."));
+                    List.of(), List.of(motivo));
         }
         boolean otimo = status == CpSolverStatus.OPTIMAL;
 
@@ -628,6 +643,62 @@ public class PlanejadorService {
             }
             model.addLessOrEqual(LinearExpr.sum(noTermo.toArray(new Literal[0])), maxDisciplinas);
         }
+    }
+
+    /**
+     * Restringe a mensalidade estimada de cada período ao teto informado (rota completa).
+     * Usa centavos para manter o CP-SAT em aritmética inteira.
+     */
+    private void aplicarOrcamentoMensal(CpModel model, Map<String, IntVar> termo, int horizonte,
+                                        List<Disciplina> pendentes, Custos custos,
+                                        PlanoRequest request, List<String> avisos) {
+        Long tetoCentavos = tetoOrcamentoCentavos(custos, request, avisos);
+        if (tetoCentavos == null) return;
+
+        Map<String, Disciplina> porCodigo = new HashMap<>();
+        for (Disciplina d : pendentes) porCodigo.put(d.codigo(), d);
+
+        for (int t = 1; t <= horizonte; t++) {
+            LinearExprBuilder custoPeriodo = LinearExpr.newBuilder();
+            for (Map.Entry<String, IntVar> e : termo.entrySet()) {
+                Literal b = model.newBoolVar("custoT_" + e.getKey() + "_" + t);
+                model.addEquality(e.getValue(), t).onlyEnforceIf(b);
+                model.addDifferent(e.getValue(), t).onlyEnforceIf(b.not());
+                custoPeriodo.addTerm(b, custos.custoMensalCentavos(porCodigo.get(e.getKey())));
+            }
+            model.addLessOrEqual(custoPeriodo, tetoCentavos);
+        }
+    }
+
+    /** Restringe a mensalidade estimada do próximo semestre ao teto informado. */
+    private void aplicarOrcamentoMensalProximoSemestre(CpModel model, Map<String, Literal> cursar,
+                                                       List<Disciplina> elegiveis, Custos custos,
+                                                       PlanoRequest request, List<String> avisos) {
+        Long tetoCentavos = tetoOrcamentoCentavos(custos, request, avisos);
+        if (tetoCentavos == null) return;
+
+        LinearExprBuilder custoSemestre = LinearExpr.newBuilder();
+        for (Disciplina d : elegiveis) {
+            custoSemestre.addTerm(cursar.get(d.codigo()), custos.custoMensalCentavos(d));
+        }
+        model.addLessOrEqual(custoSemestre, tetoCentavos);
+    }
+
+    /**
+     * Converte o orçamento em centavos, ou {@code null} se não houver teto aplicável.
+     * Emite aviso quando o usuário pediu orçamento mas o currículo não tem custos.
+     */
+    private Long tetoOrcamentoCentavos(Custos custos, PlanoRequest request, List<String> avisos) {
+        if (!request.temOrcamentoMensal()) return null;
+        if (custos == null) {
+            avisos.add("Orçamento mensal ignorado: o currículo selecionado não possui parâmetros de custo.");
+            return null;
+        }
+        long teto = Math.round(request.orcamentoMensalMax() * 100.0);
+        avisos.add(String.format(
+                "Orçamento mensal limitado a R$ %.2f (estimativa SGA, sem matrícula/bolsas).",
+                request.orcamentoMensalMax()));
+        return teto;
     }
 
     private PlanoResponse montarResposta(CpSolver solver, Map<String, IntVar> termo,
