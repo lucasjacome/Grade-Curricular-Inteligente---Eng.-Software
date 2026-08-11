@@ -2,6 +2,8 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 *.class
 *.log
+*.tmp
+*.swp
 
 .idea/
 *.iml
@@ -9,5 +11,12 @@ target/
 .settings/
 .classpath
 .project
+.factorypath
 
 .DS_Store
+Thumbs.db
+desktop.ini
+
+.cursor/
+*.orig
+*~

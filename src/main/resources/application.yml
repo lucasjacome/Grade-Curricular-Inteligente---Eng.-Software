@@ -1,6 +1,5 @@
 grade:
   curriculo-padrao: "37203"
-  # Lista separada por vírgula (mais confiável que YAML list + @Value)
   curriculos: "classpath:curriculum-37203.json,classpath:curriculum-372.json"
 
 server:

@@ -23,7 +23,7 @@ class OfertaParserTest {
 
     @Test
     void gerarOfertaJson() throws Exception {
-        File entrada = new File("dados-brutos/pgAln_PmTurmas.html");
+        File entrada = new File("dados/brutos/pgAln_PmTurmas.html");
         if (!entrada.exists()) {
             System.out.println("[oferta] arquivo não encontrado: " + entrada.getAbsolutePath());
             return;
@@ -41,7 +41,7 @@ class OfertaParserTest {
 
         // Casamento com o currículo por nome normalizado
         Curriculo curriculo = mapper.readValue(
-                getClass().getResourceAsStream("/curriculum.json"), Curriculo.class);
+                getClass().getResourceAsStream("/curriculum-37203.json"), Curriculo.class);
         Map<String, Disciplina> porNome = new LinkedHashMap<>();
         for (Disciplina d : curriculo.disciplinas()) {
             porNome.put(Normalizador.normalizar(d.nome()), d);
